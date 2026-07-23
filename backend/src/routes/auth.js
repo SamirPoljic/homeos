@@ -18,7 +18,7 @@ router.get('/me', requireAuth, async (req, res) => {
   if (!data) {
     const { data: created, error: createError } = await supabase
       .from('profiles')
-      .insert({ id: req.user.id, full_name: req.user.email })
+      .insert({ id: req.user.id, full_name: req.user.email, email: req.user.email })
       .select()
       .single();
 

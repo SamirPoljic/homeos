@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { useAuth } from '../core/auth/AuthContext';
+import { Link } from 'react-router-dom';
+import { useHousehold } from '../core/household/HouseholdContext';
 import { api } from '../core/api/apiClient';
 
 export default function DashboardPage() {
-  const { user, signOut } = useAuth();
+  const { currentHousehold, loading } = useHousehold();
   const [backendStatus, setBackendStatus] = useState('provjera...');
   const [dbStatus, setDbStatus] = useState('provjera...');
 
@@ -19,21 +20,37 @@ export default function DashboardPage() {
       .catch(() => setDbStatus('❌ Baza nedostupna'));
   }, []);
 
-  return (
-    <div style={{ maxWidth: 600, margin: '40px auto', fontFamily: 'sans-serif' }}>
-      <h1>Today — Home OS</h1>
-      <p>Prijavljen kao: {user?.email}</p>
+  if (loading) {
+    return <p style={{ color: 'var(--text-secondary)' }}>Učitavanje...</p>;
+  }
 
-      <div style={{ padding: 16, border: '1px solid #ddd', borderRadius: 8, marginTop: 16 }}>
-        <h3>Faza 0 — status provjere</h3>
-        <p>Frontend (Vercel): ✅ radi (vidiš ovu stranicu)</p>
+  if (!currentHousehold) {
+    return (
+      <div className="card" style={{ maxWidth: 480 }}>
+        <h3 style={{ marginBottom: 8 }}>Nemaš još domaćinstvo</h3>
+        <p style={{ color: 'var(--text-secondary)', marginBottom: 16 }}>
+          Napravi svoje prvo domaćinstvo da počneš koristiti Home OS.
+        </p>
+        <Link to="/households" className="btn btn-primary">
+          Napravi domaćinstvo
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <h1 style={{ marginBottom: 20 }}>Danas — {currentHousehold.name}</h1>
+
+      <div className="card" style={{ maxWidth: 480 }}>
+        <h3 style={{ marginBottom: 12 }}>Faza 0/1 — status provjere</h3>
+        <p>Frontend (Vercel): ✅ radi</p>
         <p>Backend (Render): {backendStatus}</p>
         <p>Baza (Supabase): {dbStatus}</p>
+        <p style={{ marginTop: 8 }}>
+          Tvoja rola: <span className={`badge badge-${currentHousehold.role}`}>{currentHousehold.role}</span>
+        </p>
       </div>
-
-      <button onClick={signOut} style={{ marginTop: 16 }}>
-        Odjava
-      </button>
     </div>
   );
 }
