@@ -143,7 +143,7 @@ router.post('/:boardId/columns/:columnId/cards', ...scoped, async (req, res) => 
     let taskId = req.body.task_id;
 
     if (!taskId) {
-      const task = await createTaskRow(req.params.householdId, req.user.id, req.body);
+      const task = await createTaskRow(req.params.householdId, req.user.id, req.body, { skipAutoCard: true });
       taskId = task.id;
     }
 
@@ -217,6 +217,54 @@ router.delete('/:boardId/cards/:cardId', ...scoped, async (req, res) => {
   const { error } = await supabase.from('board_cards').delete().eq('id', req.params.cardId);
   if (error) return res.status(500).json({ error: error.message });
   res.status(204).send();
+});
+
+// POST /households/:householdId/boards/:boardId/sync-tasks
+// Doda kartice za sve postojeće taskove koji ih još nemaju na ovom board-u (backfill)
+router.post('/:boardId/sync-tasks', ...scoped, async (req, res) => {
+  const { data: columns, error: colError } = await supabase
+    .from('board_columns')
+    .select('id, position')
+    .eq('board_id', req.params.boardId)
+    .order('position', { ascending: true });
+
+  if (colError) return res.status(500).json({ error: colError.message });
+  if (!columns?.length) return res.status(400).json({ error: 'Board nema kolone' });
+
+  const firstColumn = columns[0];
+  const columnIds = columns.map((c) => c.id);
+
+  const { data: tasks, error: taskError } = await supabase
+    .from('tasks')
+    .select('id')
+    .eq('household_id', req.params.householdId);
+
+  if (taskError) return res.status(500).json({ error: taskError.message });
+
+  const { data: existingCards, error: cardError } = await supabase
+    .from('board_cards')
+    .select('task_id')
+    .in('column_id', columnIds);
+
+  if (cardError) return res.status(500).json({ error: cardError.message });
+
+  const existingTaskIds = new Set((existingCards ?? []).map((c) => c.task_id));
+  const missing = (tasks ?? []).filter((t) => !existingTaskIds.has(t.id));
+
+  if (missing.length === 0) return res.json({ data: { added: 0 } });
+
+  const { count } = await supabase
+    .from('board_cards')
+    .select('id', { count: 'exact', head: true })
+    .eq('column_id', firstColumn.id);
+
+  let position = count ?? 0;
+  const rows = missing.map((t) => ({ column_id: firstColumn.id, task_id: t.id, position: position++ }));
+
+  const { error: insertError } = await supabase.from('board_cards').insert(rows);
+  if (insertError) return res.status(500).json({ error: insertError.message });
+
+  res.json({ data: { added: missing.length } });
 });
 
 export default router;

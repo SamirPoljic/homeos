@@ -10,7 +10,8 @@ const router = Router({ mergeParams: true });
 const scoped = [requireAuth, requireMembership, requireScope('tasks')];
 
 // Helper reusable i iz kanban rute (kartica bez postojećeg taska kreira novi)
-export async function createTaskRow(householdId, userId, fields) {
+// options.skipAutoCard = true kad poziva kanban ruta (ona sama stavlja kartu u tačno izabranu kolonu)
+export async function createTaskRow(householdId, userId, fields, options = {}) {
   const { title, description, due_date, priority, assigned_to, visibility } = fields;
   if (!title) throw Object.assign(new Error('title je obavezan'), { status: 400 });
 
@@ -37,7 +38,44 @@ export async function createTaskRow(householdId, userId, fields) {
     await emit(householdId, 'task.assigned', data, { entityType: 'task', entityId: data.id });
   }
 
+  if (!options.skipAutoCard) {
+    await autoCreateCard(householdId, data.id);
+  }
+
   return data;
+}
+
+// Stavlja novi task kao karticu u prvu kolonu prvog board-a domaćinstva (ako board postoji)
+// Ovo je ono što drži Kanban i Taskove sinhronizovanim - svaki task se automatski vidi na tabli.
+async function autoCreateCard(householdId, taskId) {
+  const { data: board } = await supabase
+    .from('boards')
+    .select('id')
+    .eq('household_id', householdId)
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (!board) return; // nema board-a još, ništa ne radimo
+
+  const { data: firstColumn } = await supabase
+    .from('board_columns')
+    .select('id')
+    .eq('board_id', board.id)
+    .order('position', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (!firstColumn) return; // board postoji ali nema kolona
+
+  const { count } = await supabase
+    .from('board_cards')
+    .select('id', { count: 'exact', head: true })
+    .eq('column_id', firstColumn.id);
+
+  await supabase
+    .from('board_cards')
+    .insert({ column_id: firstColumn.id, task_id: taskId, position: count ?? 0 });
 }
 
 // GET /households/:householdId/tasks

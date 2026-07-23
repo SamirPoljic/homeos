@@ -20,4 +20,6 @@ export const kanbanApi = {
     }),
   removeCard: (householdId, boardId, cardId) =>
     api.delete(`/households/${householdId}/boards/${boardId}/cards/${cardId}`),
+  syncTasks: (householdId, boardId) =>
+    api.post(`/households/${householdId}/boards/${boardId}/sync-tasks`),
 };

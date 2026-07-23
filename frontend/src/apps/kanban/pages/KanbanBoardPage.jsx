@@ -71,6 +71,19 @@ export default function KanbanBoardPage() {
     }
   }
 
+  // Sinhronizuje taskove kreirane prije nego je auto-kartica postojala (ili sa druge stranice)
+  async function handleSync(boardId) {
+    try {
+      const res = await kanbanApi.syncTasks(household.id, boardId);
+      await load();
+      if (res.data.added === 0) {
+        alert('Sve je već sinhronizovano.');
+      }
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   async function handleAddCard(boardId, columnId) {
     const title = (newCardTitle[columnId] ?? '').trim();
     if (!title) return;
@@ -149,6 +162,9 @@ export default function KanbanBoardPage() {
                 <option value="status">Status</option>
                 <option value="member">Osoba</option>
               </select>
+              <button className="btn btn-secondary" onClick={() => handleSync(board.id)}>
+                Sinhronizuj taskove
+              </button>
             </div>
           </div>
 
