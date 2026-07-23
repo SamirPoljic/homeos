@@ -30,6 +30,7 @@ export default function TasksListPage() {
   const [editSubtaskTitle, setEditSubtaskTitle] = useState('');
 
   async function loadTasks() {
+    if (!household) return;
     setLoading(true);
     setError(null);
     try {
@@ -43,6 +44,7 @@ export default function TasksListPage() {
   }
 
   async function loadTemplates() {
+    if (!household) return;
     try {
       const res = await tasksApi.listTemplates(household.id);
       setTemplates(res.data);
@@ -52,6 +54,7 @@ export default function TasksListPage() {
   }
 
   async function loadMembers() {
+    if (!household) return;
     try {
       const res = await householdsApi.listMembers(household.id);
       setMembers(res.data);
@@ -61,6 +64,7 @@ export default function TasksListPage() {
   }
 
   useEffect(() => {
+    if (!household) return;
     loadTasks();
     loadTemplates();
     loadMembers();

@@ -8,6 +8,8 @@ export const kanbanApi = {
 
   createColumn: (householdId, boardId, name) =>
     api.post(`/households/${householdId}/boards/${boardId}/columns`, { name }),
+  updateColumn: (householdId, boardId, columnId, fields) =>
+    api.patch(`/households/${householdId}/boards/${boardId}/columns/${columnId}`, fields),
 
   createCard: (householdId, boardId, columnId, fields) =>
     api.post(`/households/${householdId}/boards/${boardId}/columns/${columnId}/cards`, fields),

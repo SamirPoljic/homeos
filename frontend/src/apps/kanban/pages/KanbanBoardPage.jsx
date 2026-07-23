@@ -15,6 +15,7 @@ export default function KanbanBoardPage() {
   const [creatingBoard, setCreatingBoard] = useState(false);
 
   async function load() {
+    if (!household) return;
     setLoading(true);
     setError(null);
     try {
@@ -32,7 +33,7 @@ export default function KanbanBoardPage() {
   }
 
   useEffect(() => {
-    load();
+    if (household) load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [household?.id]);
 
@@ -51,6 +52,19 @@ export default function KanbanBoardPage() {
   async function handleGroupByChange(board, groupBy) {
     try {
       await kanbanApi.updateGroupBy(household.id, board.id, groupBy);
+      await load();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  // Oporavak: ako je board ostao bez kolona (npr. insert pao prije nego je is_done kolona postojala)
+  async function handleRepairColumns(boardId) {
+    try {
+      await kanbanApi.createColumn(household.id, boardId, 'To do');
+      await kanbanApi.createColumn(household.id, boardId, 'Doing');
+      const doneRes = await kanbanApi.createColumn(household.id, boardId, 'Done');
+      await kanbanApi.updateColumn(household.id, boardId, doneRes.data.id, { is_done: true });
       await load();
     } catch (err) {
       setError(err.message);
@@ -139,6 +153,16 @@ export default function KanbanBoardPage() {
           </div>
 
           {board.group_by === 'status' ? (
+            board.board_columns.length === 0 ? (
+              <div className="card" style={{ maxWidth: 420 }}>
+                <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 12 }}>
+                  Ovaj board nema kolone (vjerovatno je nastalo prije neke izmjene). Dodaj standardne kolone da ga popraviš.
+                </p>
+                <button className="btn btn-primary" onClick={() => handleRepairColumns(board.id)}>
+                  Dodaj standardne kolone
+                </button>
+              </div>
+            ) : (
             <div style={{ display: 'flex', gap: 16, overflowX: 'auto' }}>
               {board.board_columns.map((col) => (
                 <div
@@ -195,6 +219,7 @@ export default function KanbanBoardPage() {
                 </div>
               ))}
             </div>
+            )
           ) : (
             <MemberGroupedView
               board={board}

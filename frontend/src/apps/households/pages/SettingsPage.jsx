@@ -65,14 +65,18 @@ export default function SettingsPage() {
 
 function HouseholdTab() {
   const { household, refresh } = useHousehold();
-  const [name, setName] = useState(household?.name ?? '');
+  const [name, setName] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const canManage = ['owner', 'admin'].includes(household?.role);
 
+  useEffect(() => {
+    if (household) setName(household.name);
+  }, [household?.name]);
+
   async function handleSave(e) {
     e.preventDefault();
-    if (!name.trim() || name === household.name) return;
+    if (!household || !name.trim() || name === household.name) return;
     setSaving(true);
     setError(null);
     try {
@@ -84,6 +88,8 @@ function HouseholdTab() {
       setSaving(false);
     }
   }
+
+  if (!household) return <p style={{ color: 'var(--text-secondary)' }}>Učitavanje...</p>;
 
   return (
     <div className="card" style={{ maxWidth: 480 }}>
@@ -114,7 +120,9 @@ function MembersTab() {
   const canManage = myMembership && ['owner', 'admin'].includes(myMembership.role);
 
   async function load() {
+    if (!household) return;
     setLoading(true);
+    setError(null);
     try {
       const res = await householdsApi.listMembers(household.id);
       setMembers(res.data);
@@ -126,7 +134,7 @@ function MembersTab() {
   }
 
   useEffect(() => {
-    load();
+    if (household) load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [household?.id]);
 
@@ -164,6 +172,8 @@ function MembersTab() {
       setError(err.message);
     }
   }
+
+  if (!household) return <p style={{ color: 'var(--text-secondary)' }}>Učitavanje...</p>;
 
   return (
     <div className="card">
@@ -249,6 +259,7 @@ function PermissionsTab() {
   const canManage = ['owner', 'admin'].includes(household?.role);
 
   async function load() {
+    if (!household) return;
     setLoading(true);
     setError(null);
     try {
@@ -267,7 +278,7 @@ function PermissionsTab() {
   }
 
   useEffect(() => {
-    load();
+    if (household) load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [household?.id]);
 
@@ -285,6 +296,8 @@ function PermissionsTab() {
       setError(err.message);
     }
   }
+
+  if (!household) return <p style={{ color: 'var(--text-secondary)' }}>Učitavanje...</p>;
 
   return (
     <div className="card">
@@ -346,18 +359,22 @@ function RegistryTab() {
   const [loading, setLoading] = useState(true);
 
   async function load() {
+    if (!household) return;
     setLoading(true);
-    const res = await tasksApi.listTemplates(household.id);
-    setTemplates(res.data);
-    setLoading(false);
+    try {
+      const res = await tasksApi.listTemplates(household.id);
+      setTemplates(res.data);
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {
-    load();
+    if (household) load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [household?.id]);
 
-  if (loading) return <p style={{ color: 'var(--text-secondary)' }}>Učitavanje...</p>;
+  if (!household || loading) return <p style={{ color: 'var(--text-secondary)' }}>Učitavanje...</p>;
 
   return <TaskRegistryPanel householdId={household.id} templates={templates} onChange={load} />;
 }
