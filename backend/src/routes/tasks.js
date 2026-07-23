@@ -9,9 +9,8 @@ const router = Router({ mergeParams: true });
 
 const scoped = [requireAuth, requireMembership, requireScope('tasks')];
 
-// Helper reusable i iz kanban rute (kartica bez postojećeg taska kreira novi)
-// options.skipAutoCard = true kad poziva kanban ruta (ona sama stavlja kartu u tačno izabranu kolonu)
-export async function createTaskRow(householdId, userId, fields, options = {}) {
+// Helper reusable iz svih ruta koje kreiraju task
+export async function createTaskRow(householdId, userId, fields) {
   const { title, description, due_date, priority, assigned_to, visibility } = fields;
   if (!title) throw Object.assign(new Error('title je obavezan'), { status: 400 });
 
@@ -38,44 +37,7 @@ export async function createTaskRow(householdId, userId, fields, options = {}) {
     await emit(householdId, 'task.assigned', data, { entityType: 'task', entityId: data.id });
   }
 
-  if (!options.skipAutoCard) {
-    await autoCreateCard(householdId, data.id);
-  }
-
   return data;
-}
-
-// Stavlja novi task kao karticu u prvu kolonu prvog board-a domaćinstva (ako board postoji)
-// Ovo je ono što drži Kanban i Taskove sinhronizovanim - svaki task se automatski vidi na tabli.
-async function autoCreateCard(householdId, taskId) {
-  const { data: board } = await supabase
-    .from('boards')
-    .select('id')
-    .eq('household_id', householdId)
-    .order('created_at', { ascending: true })
-    .limit(1)
-    .maybeSingle();
-
-  if (!board) return; // nema board-a još, ništa ne radimo
-
-  const { data: firstColumn } = await supabase
-    .from('board_columns')
-    .select('id')
-    .eq('board_id', board.id)
-    .order('position', { ascending: true })
-    .limit(1)
-    .maybeSingle();
-
-  if (!firstColumn) return; // board postoji ali nema kolona
-
-  const { count } = await supabase
-    .from('board_cards')
-    .select('id', { count: 'exact', head: true })
-    .eq('column_id', firstColumn.id);
-
-  await supabase
-    .from('board_cards')
-    .insert({ column_id: firstColumn.id, task_id: taskId, position: count ?? 0 });
 }
 
 // GET /households/:householdId/tasks
@@ -159,7 +121,11 @@ router.patch('/:taskId/complete', ...scoped, async (req, res) => {
 
   const { data, error } = await supabase
     .from('tasks')
-    .update({ completed, completed_at: completed ? new Date().toISOString() : null })
+    .update({
+      completed,
+      completed_at: completed ? new Date().toISOString() : null,
+      status: completed ? 'done' : 'todo',
+    })
     .eq('id', req.params.taskId)
     .eq('household_id', req.params.householdId)
     .select()
@@ -168,6 +134,37 @@ router.patch('/:taskId/complete', ...scoped, async (req, res) => {
   if (error) return res.status(500).json({ error: error.message });
 
   if (completed) {
+    await emit(req.params.householdId, 'task.completed', data, { entityType: 'task', entityId: data.id });
+  }
+
+  res.json({ data });
+});
+
+// PATCH /households/:householdId/tasks/:taskId/status
+// Koristi Kanban za pomjeranje kartice između kolona (todo/doing/done)
+router.patch('/:taskId/status', ...scoped, async (req, res) => {
+  const { status } = req.body;
+  if (!['todo', 'doing', 'done'].includes(status)) {
+    return res.status(400).json({ error: 'status mora biti todo, doing ili done' });
+  }
+
+  const isDone = status === 'done';
+
+  const { data, error } = await supabase
+    .from('tasks')
+    .update({
+      status,
+      completed: isDone,
+      completed_at: isDone ? new Date().toISOString() : null,
+    })
+    .eq('id', req.params.taskId)
+    .eq('household_id', req.params.householdId)
+    .select()
+    .single();
+
+  if (error) return res.status(500).json({ error: error.message });
+
+  if (isDone) {
     await emit(req.params.householdId, 'task.completed', data, { entityType: 'task', entityId: data.id });
   }
 

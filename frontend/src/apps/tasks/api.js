@@ -10,6 +10,8 @@ export const tasksApi = {
     api.patch(`/households/${householdId}/tasks/${taskId}`, fields),
   setComplete: (householdId, taskId, completed) =>
     api.patch(`/households/${householdId}/tasks/${taskId}/complete`, { completed }),
+  updateStatus: (householdId, taskId, status) =>
+    api.patch(`/households/${householdId}/tasks/${taskId}/status`, { status }),
   remove: (householdId, taskId) => api.delete(`/households/${householdId}/tasks/${taskId}`),
 
   addSubtask: (householdId, taskId, title) =>

@@ -46,21 +46,6 @@ router.post('/', requireAuth, async (req, res) => {
 
   if (memberError) return res.status(500).json({ error: memberError.message });
 
-  // Auto-kreiraj default kanban board sa standardnim kolonama
-  const { data: board } = await supabase
-    .from('boards')
-    .insert({ household_id: household.id, name: 'Domaćinstvo' })
-    .select()
-    .single();
-
-  if (board) {
-    await supabase.from('board_columns').insert([
-      { board_id: board.id, name: 'To do', position: 0 },
-      { board_id: board.id, name: 'Doing', position: 1 },
-      { board_id: board.id, name: 'Done', position: 2, is_done: true },
-    ]);
-  }
-
   res.status(201).json({ data: household });
 });
 

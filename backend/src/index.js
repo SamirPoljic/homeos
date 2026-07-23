@@ -30,7 +30,6 @@ import authRoutes from './routes/auth.js';
 import householdRoutes from './routes/households.js';
 import taskRoutes from './routes/tasks.js';
 import tagRoutes from './routes/tags.js';
-import kanbanRoutes from './routes/kanban.js';
 import taskTemplateRoutes from './routes/taskTemplates.js';
 import adminSeedRoutes from './routes/adminSeed.js';
 
@@ -41,7 +40,6 @@ app.use('/auth', authRoutes);
 app.use('/households', householdRoutes);
 app.use('/households/:householdId/tasks', taskRoutes);
 app.use('/households/:householdId/tags', tagRoutes);
-app.use('/households/:householdId/boards', kanbanRoutes);
 app.use('/households/:householdId/task-templates', taskTemplateRoutes);
 app.use('/admin', adminSeedRoutes);
 
