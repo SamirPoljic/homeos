@@ -12,7 +12,7 @@ const NAV_ITEMS = [
 
 export function AppShell() {
   const { user, signOut } = useAuth();
-  const { household } = useHousehold();
+  const { household, error } = useHousehold();
 
   return (
     <div className="shell">
@@ -43,6 +43,12 @@ export function AppShell() {
             </button>
           </div>
         </header>
+
+        {error && (
+          <div style={{ background: 'var(--danger-dim)', color: 'var(--danger)', padding: '10px 28px', fontSize: 13 }}>
+            Greška pri učitavanju domaćinstva: {error}
+          </div>
+        )}
 
         <main className="shell-content">
           <Outlet />
