@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useHousehold } from '../../../core/household/HouseholdContext';
 import { tasksApi } from '../api';
 import { householdsApi } from '../../households/api';
-import { TaskRegistryPanel } from '../components/TaskRegistryPanel';
+
 
 const PRIORITY_LABELS = { low: 'Nizak', medium: 'Srednji', high: 'Visok' };
 
@@ -194,7 +195,17 @@ export default function TasksListPage() {
         </label>
       </div>
 
-      <TaskRegistryPanel householdId={household.id} templates={templates} onChange={loadTemplates} />
+      {templates.length === 0 && (
+        <div className="card" style={{ marginBottom: 24 }}>
+          <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>
+            Registar taskova je prazan.{' '}
+            <Link to="/settings" style={{ color: 'var(--accent-hover)' }}>
+              Idi na Postavke → Registar taskova
+            </Link>{' '}
+            da dodaš prve unose.
+          </p>
+        </div>
+      )}
 
       <div className="card" style={{ marginBottom: 24 }}>
         <h3 style={{ marginBottom: 12 }}>Dodaj task na listu</h3>
@@ -239,11 +250,6 @@ export default function TasksListPage() {
             {creating ? 'Dodavanje...' : 'Dodaj'}
           </button>
         </form>
-        {templates.length === 0 && (
-          <p style={{ color: 'var(--text-muted)', fontSize: 12, marginTop: 8 }}>
-            Prvo dodaj bar jedan task u registar iznad.
-          </p>
-        )}
       </div>
 
       {error && <p className="text-error" style={{ marginBottom: 12 }}>{error}</p>}
