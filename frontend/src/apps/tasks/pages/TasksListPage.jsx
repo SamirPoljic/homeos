@@ -1,25 +1,34 @@
 import { useEffect, useState } from 'react';
 import { useHousehold } from '../../../core/household/HouseholdContext';
 import { tasksApi } from '../api';
+import { householdsApi } from '../../households/api';
+import { TaskRegistryPanel } from '../components/TaskRegistryPanel';
 
 const PRIORITY_LABELS = { low: 'Nizak', medium: 'Srednji', high: 'Visok' };
 
 export default function TasksListPage() {
   const { household } = useHousehold();
   const [tasks, setTasks] = useState([]);
+  const [templates, setTemplates] = useState([]);
+  const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showCompleted, setShowCompleted] = useState(false);
 
-  const [title, setTitle] = useState('');
+  const [templateId, setTemplateId] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [priority, setPriority] = useState('medium');
+  const [assignedTo, setAssignedTo] = useState('');
   const [creating, setCreating] = useState(false);
 
   const [expandedId, setExpandedId] = useState(null);
+  const [editingId, setEditingId] = useState(null);
+  const [editFields, setEditFields] = useState({});
   const [newSubtask, setNewSubtask] = useState('');
+  const [editingSubtaskId, setEditingSubtaskId] = useState(null);
+  const [editSubtaskTitle, setEditSubtaskTitle] = useState('');
 
-  async function load() {
+  async function loadTasks() {
     setLoading(true);
     setError(null);
     try {
@@ -32,26 +41,54 @@ export default function TasksListPage() {
     }
   }
 
+  async function loadTemplates() {
+    try {
+      const res = await tasksApi.listTemplates(household.id);
+      setTemplates(res.data);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function loadMembers() {
+    try {
+      const res = await householdsApi.listMembers(household.id);
+      setMembers(res.data);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   useEffect(() => {
-    load();
+    loadTasks();
+    loadTemplates();
+    loadMembers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [household?.id, showCompleted]);
 
+  function memberName(profileId) {
+    const m = members.find((mm) => mm.profiles?.id === profileId);
+    return m?.profiles?.full_name || m?.profiles?.email || '—';
+  }
+
   async function handleCreate(e) {
     e.preventDefault();
-    if (!title.trim()) return;
+    if (!templateId) return;
+    const template = templates.find((t) => t.id === templateId);
     setCreating(true);
     setError(null);
     try {
       await tasksApi.create(household.id, {
-        title: title.trim(),
+        title: template.title,
         due_date: dueDate || null,
         priority,
+        assigned_to: assignedTo || null,
       });
-      setTitle('');
+      setTemplateId('');
       setDueDate('');
       setPriority('medium');
-      await load();
+      setAssignedTo('');
+      await loadTasks();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -59,10 +96,16 @@ export default function TasksListPage() {
     }
   }
 
+  function handleTemplateChange(id) {
+    setTemplateId(id);
+    const template = templates.find((t) => t.id === id);
+    if (template) setPriority(template.default_priority ?? 'medium');
+  }
+
   async function toggleComplete(task) {
     try {
       await tasksApi.setComplete(household.id, task.id, !task.completed);
-      await load();
+      await loadTasks();
     } catch (err) {
       setError(err.message);
     }
@@ -72,7 +115,30 @@ export default function TasksListPage() {
     if (!confirm('Obrisati ovaj task?')) return;
     try {
       await tasksApi.remove(household.id, taskId);
-      await load();
+      await loadTasks();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  function startEdit(task) {
+    setEditingId(task.id);
+    setEditFields({
+      due_date: task.due_date ? task.due_date.slice(0, 10) : '',
+      priority: task.priority,
+      assigned_to: task.assigned_to ?? '',
+    });
+  }
+
+  async function saveEdit(taskId) {
+    try {
+      await tasksApi.update(household.id, taskId, {
+        due_date: editFields.due_date || null,
+        priority: editFields.priority,
+        assigned_to: editFields.assigned_to || null,
+      });
+      setEditingId(null);
+      await loadTasks();
     } catch (err) {
       setError(err.message);
     }
@@ -83,7 +149,7 @@ export default function TasksListPage() {
     try {
       await tasksApi.addSubtask(household.id, taskId, newSubtask.trim());
       setNewSubtask('');
-      await load();
+      await loadTasks();
     } catch (err) {
       setError(err.message);
     }
@@ -92,7 +158,27 @@ export default function TasksListPage() {
   async function toggleSubtask(subtask) {
     try {
       await tasksApi.updateSubtask(household.id, subtask.id, { completed: !subtask.completed });
-      await load();
+      await loadTasks();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function renameSubtask(subtaskId) {
+    if (!editSubtaskTitle.trim()) return;
+    try {
+      await tasksApi.updateSubtask(household.id, subtaskId, { title: editSubtaskTitle.trim() });
+      setEditingSubtaskId(null);
+      await loadTasks();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function deleteSubtask(subtaskId) {
+    try {
+      await tasksApi.removeSubtask(household.id, subtaskId);
+      await loadTasks();
     } catch (err) {
       setError(err.message);
     }
@@ -108,17 +194,27 @@ export default function TasksListPage() {
         </label>
       </div>
 
+      <TaskRegistryPanel householdId={household.id} templates={templates} onChange={loadTemplates} />
+
       <div className="card" style={{ marginBottom: 24 }}>
-        <h3 style={{ marginBottom: 12 }}>Novi task</h3>
+        <h3 style={{ marginBottom: 12 }}>Dodaj task na listu</h3>
         <form onSubmit={handleCreate} style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          <input
+          <select
             className="input"
             style={{ flex: 2, minWidth: 180 }}
-            placeholder="Šta treba uraditi?"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            value={templateId}
+            onChange={(e) => handleTemplateChange(e.target.value)}
             required
-          />
+          >
+            <option value="" disabled>
+              Izaberi iz registra...
+            </option>
+            {templates.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.title}
+              </option>
+            ))}
+          </select>
           <input
             className="input"
             type="date"
@@ -126,15 +222,28 @@ export default function TasksListPage() {
             value={dueDate}
             onChange={(e) => setDueDate(e.target.value)}
           />
-          <select className="input" style={{ width: 130 }} value={priority} onChange={(e) => setPriority(e.target.value)}>
+          <select className="input" style={{ width: 120 }} value={priority} onChange={(e) => setPriority(e.target.value)}>
             <option value="low">Nizak</option>
             <option value="medium">Srednji</option>
             <option value="high">Visok</option>
           </select>
-          <button className="btn btn-primary" disabled={creating} type="submit">
+          <select className="input" style={{ width: 160 }} value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}>
+            <option value="">Nedodijeljeno</option>
+            {members.map((m) => (
+              <option key={m.profiles.id} value={m.profiles.id}>
+                {m.profiles.full_name || m.profiles.email}
+              </option>
+            ))}
+          </select>
+          <button className="btn btn-primary" disabled={creating || templates.length === 0} type="submit">
             {creating ? 'Dodavanje...' : 'Dodaj'}
           </button>
         </form>
+        {templates.length === 0 && (
+          <p style={{ color: 'var(--text-muted)', fontSize: 12, marginTop: 8 }}>
+            Prvo dodaj bar jedan task u registar iznad.
+          </p>
+        )}
       </div>
 
       {error && <p className="text-error" style={{ marginBottom: 12 }}>{error}</p>}
@@ -154,11 +263,7 @@ export default function TasksListPage() {
                 />
                 <div style={{ flex: 1 }}>
                   <div
-                    style={{
-                      fontWeight: 600,
-                      textDecoration: task.completed ? 'line-through' : 'none',
-                      cursor: 'pointer',
-                    }}
+                    style={{ fontWeight: 600, textDecoration: task.completed ? 'line-through' : 'none', cursor: 'pointer' }}
                     onClick={() => setExpandedId(expandedId === task.id ? null : task.id)}
                   >
                     {task.title}
@@ -168,6 +273,7 @@ export default function TasksListPage() {
                     <span className={`badge badge-${task.priority === 'high' ? 'owner' : task.priority === 'low' ? 'member' : 'admin'}`}>
                       {PRIORITY_LABELS[task.priority]}
                     </span>
+                    <span>👤 {task.assigned_to ? memberName(task.assigned_to) : 'Nedodijeljeno'}</span>
                     {task.subtasks?.length > 0 && (
                       <span>
                         {task.subtasks.filter((s) => s.completed).length}/{task.subtasks.length} subtaskova
@@ -177,11 +283,90 @@ export default function TasksListPage() {
 
                   {expandedId === task.id && (
                     <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
+                      {editingId === task.id ? (
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+                          <input
+                            className="input"
+                            type="date"
+                            style={{ width: 150 }}
+                            value={editFields.due_date}
+                            onChange={(e) => setEditFields((f) => ({ ...f, due_date: e.target.value }))}
+                          />
+                          <select
+                            className="input"
+                            style={{ width: 120 }}
+                            value={editFields.priority}
+                            onChange={(e) => setEditFields((f) => ({ ...f, priority: e.target.value }))}
+                          >
+                            <option value="low">Nizak</option>
+                            <option value="medium">Srednji</option>
+                            <option value="high">Visok</option>
+                          </select>
+                          <select
+                            className="input"
+                            style={{ width: 160 }}
+                            value={editFields.assigned_to}
+                            onChange={(e) => setEditFields((f) => ({ ...f, assigned_to: e.target.value }))}
+                          >
+                            <option value="">Nedodijeljeno</option>
+                            {members.map((m) => (
+                              <option key={m.profiles.id} value={m.profiles.id}>
+                                {m.profiles.full_name || m.profiles.email}
+                              </option>
+                            ))}
+                          </select>
+                          <button className="btn btn-primary" onClick={() => saveEdit(task.id)}>
+                            Sačuvaj
+                          </button>
+                          <button className="btn btn-ghost" onClick={() => setEditingId(null)}>
+                            Otkaži
+                          </button>
+                        </div>
+                      ) : (
+                        <button className="btn btn-secondary" style={{ marginBottom: 12 }} onClick={() => startEdit(task)}>
+                          Uredi task
+                        </button>
+                      )}
+
                       {task.subtasks?.map((s) => (
-                        <label key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, marginBottom: 6 }}>
+                        <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, marginBottom: 6 }}>
                           <input type="checkbox" checked={s.completed} onChange={() => toggleSubtask(s)} />
-                          <span style={{ textDecoration: s.completed ? 'line-through' : 'none' }}>{s.title}</span>
-                        </label>
+                          {editingSubtaskId === s.id ? (
+                            <>
+                              <input
+                                className="input"
+                                style={{ padding: '4px 8px', fontSize: 12, flex: 1 }}
+                                value={editSubtaskTitle}
+                                onChange={(e) => setEditSubtaskTitle(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && renameSubtask(s.id)}
+                                autoFocus
+                              />
+                              <button className="btn btn-ghost" style={{ padding: '2px 6px' }} onClick={() => renameSubtask(s.id)}>
+                                ✓
+                              </button>
+                              <button className="btn btn-ghost" style={{ padding: '2px 6px' }} onClick={() => setEditingSubtaskId(null)}>
+                                ✕
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <span style={{ flex: 1, textDecoration: s.completed ? 'line-through' : 'none' }}>{s.title}</span>
+                              <button
+                                className="btn btn-ghost"
+                                style={{ padding: '2px 6px' }}
+                                onClick={() => {
+                                  setEditingSubtaskId(s.id);
+                                  setEditSubtaskTitle(s.title);
+                                }}
+                              >
+                                ✎
+                              </button>
+                              <button className="btn btn-ghost" style={{ padding: '2px 6px' }} onClick={() => deleteSubtask(s.id)}>
+                                ✕
+                              </button>
+                            </>
+                          )}
+                        </div>
                       ))}
                       <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
                         <input

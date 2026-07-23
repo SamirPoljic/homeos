@@ -3,6 +3,8 @@ import { api } from '../../core/api/apiClient';
 export const kanbanApi = {
   listBoards: (householdId) => api.get(`/households/${householdId}/boards`),
   createBoard: (householdId, name) => api.post(`/households/${householdId}/boards`, { name }),
+  updateGroupBy: (householdId, boardId, groupBy) =>
+    api.patch(`/households/${householdId}/boards/${boardId}`, { group_by: groupBy }),
 
   createColumn: (householdId, boardId, name) =>
     api.post(`/households/${householdId}/boards/${boardId}/columns`, { name }),

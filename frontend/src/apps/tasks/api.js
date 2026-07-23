@@ -22,4 +22,12 @@ export const tasksApi = {
   listTags: (householdId) => api.get(`/households/${householdId}/tags`),
   createTag: (householdId, name, color) =>
     api.post(`/households/${householdId}/tags`, { name, color }),
+
+  listTemplates: (householdId) => api.get(`/households/${householdId}/task-templates`),
+  createTemplate: (householdId, title, defaultPriority) =>
+    api.post(`/households/${householdId}/task-templates`, { title, default_priority: defaultPriority }),
+  updateTemplate: (householdId, templateId, fields) =>
+    api.patch(`/households/${householdId}/task-templates/${templateId}`, fields),
+  removeTemplate: (householdId, templateId) =>
+    api.delete(`/households/${householdId}/task-templates/${templateId}`),
 };

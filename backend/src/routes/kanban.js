@@ -67,6 +67,25 @@ router.delete('/:boardId', ...scoped, async (req, res) => {
   res.status(204).send();
 });
 
+// PATCH /households/:householdId/boards/:boardId -> promjena group_by ('status' | 'member')
+router.patch('/:boardId', ...scoped, async (req, res) => {
+  const { group_by } = req.body;
+  if (!['status', 'member'].includes(group_by)) {
+    return res.status(400).json({ error: 'group_by mora biti "status" ili "member"' });
+  }
+
+  const { data, error } = await supabase
+    .from('boards')
+    .update({ group_by })
+    .eq('id', req.params.boardId)
+    .eq('household_id', req.params.householdId)
+    .select()
+    .single();
+
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ data });
+});
+
 // ---------- Columns ----------
 
 // POST /households/:householdId/boards/:boardId/columns
