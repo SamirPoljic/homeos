@@ -4,7 +4,7 @@ import { useHousehold } from '../household/HouseholdContext';
 
 // Faza 1: statična lista. Od Faze 6/7 ovo dolazi iz appRegistry.getNavItems()
 const NAV_ITEMS = [
-  { path: '/', label: 'Danas', icon: '☰' },
+  { path: '/', label: 'Početna tabla', icon: '☰' },
   { path: '/tasks', label: 'Taskovi', icon: '✓' },
   { path: '/kanban', label: 'Kanban', icon: '▤' },
   { path: '/settings', label: 'Postavke', icon: '⚙' },

@@ -1,46 +1,120 @@
 import { useEffect, useState } from 'react';
 import { useHousehold } from '../core/household/HouseholdContext';
+import { useAuth } from '../core/auth/AuthContext';
 import { CreateHouseholdForm } from '../apps/households/components/CreateHouseholdForm';
-import { api } from '../core/api/apiClient';
+import { householdsApi } from '../apps/households/api';
+import { tasksApi } from '../apps/tasks/api';
+import { MonthCalendar, toDateKey } from '../apps/dashboard/components/MonthCalendar';
+import { ReminderPanel } from '../apps/reminders/components/ReminderPanel';
+
+const PRIORITY_LABELS = { low: 'Nizak', medium: 'Srednji', high: 'Visok' };
 
 export default function DashboardPage() {
-  const { household, loading } = useHousehold();
-  const [backendStatus, setBackendStatus] = useState('provjera...');
-  const [dbStatus, setDbStatus] = useState('provjera...');
+  const { household, loading: householdLoading } = useHousehold();
+  const { user } = useAuth();
 
-  useEffect(() => {
-    api
-      .get('/health')
-      .then(() => setBackendStatus('✅ Backend povezan'))
-      .catch(() => setBackendStatus('❌ Backend nedostupan'));
+  const [tasks, setTasks] = useState([]);
+  const [members, setMembers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [selectedDate, setSelectedDate] = useState(() => toDateKey(new Date()));
 
-    fetch(`${import.meta.env.VITE_API_URL}/health/db`)
-      .then((r) => r.json())
-      .then((json) => setDbStatus(json.status === 'ok' ? '✅ Baza povezana' : `❌ ${json.message}`))
-      .catch(() => setDbStatus('❌ Baza nedostupna'));
-  }, []);
-
-  if (loading) {
-    return <p style={{ color: 'var(--text-secondary)' }}>Učitavanje...</p>;
+  async function load() {
+    if (!household) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const [tasksRes, membersRes] = await Promise.all([
+        tasksApi.list(household.id, { completed: 'false' }),
+        householdsApi.listMembers(household.id),
+      ]);
+      setTasks(tasksRes.data);
+      setMembers(membersRes.data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   }
 
-  if (!household) {
-    return <CreateHouseholdForm />;
+  useEffect(() => {
+    if (household) load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [household?.id]);
+
+  if (householdLoading) return <p style={{ color: 'var(--text-secondary)' }}>Učitavanje...</p>;
+  if (!household) return <CreateHouseholdForm />;
+
+  // grupiši taskove po datumu (samo todo/doing su ovdje jer se već filtrira completed=false)
+  const tasksByDate = {};
+  for (const t of tasks) {
+    if (!t.due_date) continue;
+    const key = t.due_date.slice(0, 10);
+    (tasksByDate[key] ??= []).push(t);
+  }
+
+  const tasksForSelectedDay = tasksByDate[selectedDate] ?? [];
+  const todayKey = toDateKey(new Date());
+  const tasksDueToday = (tasksByDate[todayKey] ?? []).filter((t) => t.assigned_to === user?.id);
+
+  function memberName(profileId) {
+    const m = members.find((mm) => mm.profiles?.id === profileId);
+    return m?.profiles?.full_name || m?.profiles?.email || '—';
   }
 
   return (
     <div>
-      <h1 style={{ marginBottom: 20 }}>Danas — {household.name}</h1>
+      <h1 style={{ marginBottom: 20 }}>Početna tabla — {household.name}</h1>
 
-      <div className="card" style={{ maxWidth: 480 }}>
-        <h3 style={{ marginBottom: 12 }}>Faza 0/1 — status provjere</h3>
-        <p>Frontend (Vercel): ✅ radi</p>
-        <p>Backend (Render): {backendStatus}</p>
-        <p>Baza (Supabase): {dbStatus}</p>
-        <p style={{ marginTop: 8 }}>
-          Tvoja rola: <span className={`badge badge-${household.role}`}>{household.role}</span>
-        </p>
-      </div>
+      {error && <p className="text-error" style={{ marginBottom: 12 }}>{error}</p>}
+
+      {loading ? (
+        <p style={{ color: 'var(--text-secondary)' }}>Učitavanje...</p>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: '340px 1fr 300px', gap: 20, alignItems: 'start' }}>
+          <MonthCalendar tasksByDate={tasksByDate} selectedDate={selectedDate} onSelectDate={setSelectedDate} />
+
+          <div className="card">
+            <h3 style={{ marginBottom: 12 }}>
+              Taskovi za {selectedDate === todayKey ? 'danas' : selectedDate}
+            </h3>
+            {tasksForSelectedDay.length === 0 ? (
+              <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>Nema taskova za ovaj dan.</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {tasksForSelectedDay.map((task) => (
+                  <div
+                    key={task.id}
+                    style={{
+                      padding: '10px 12px',
+                      background: 'var(--bg-surface-raised)',
+                      borderRadius: 'var(--radius-sm)',
+                    }}
+                  >
+                    <div style={{ fontWeight: 600, fontSize: 14 }}>{task.title}</div>
+                    <div style={{ display: 'flex', gap: 10, marginTop: 4, fontSize: 12, color: 'var(--text-muted)' }}>
+                      <span className={`badge badge-${(task.status || 'todo') === 'doing' ? 'admin' : 'member'}`}>
+                        {task.status === 'doing' ? 'Doing' : 'To do'}
+                      </span>
+                      <span className={`badge badge-${task.priority === 'high' ? 'owner' : task.priority === 'low' ? 'member' : 'admin'}`}>
+                        {PRIORITY_LABELS[task.priority]}
+                      </span>
+                      <span>👤 {task.assigned_to ? memberName(task.assigned_to) : 'Nedodijeljeno'}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <ReminderPanel
+            householdId={household.id}
+            members={members}
+            currentUserId={user?.id}
+            tasksDueToday={tasksDueToday}
+          />
+        </div>
+      )}
     </div>
   );
 }
