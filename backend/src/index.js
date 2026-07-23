@@ -28,9 +28,18 @@ app.get('/health/db', async (req, res) => {
 // --- Rute (dodaju se modul po modul kroz sljedeće faze) ---
 import authRoutes from './routes/auth.js';
 import householdRoutes from './routes/households.js';
+import taskRoutes from './routes/tasks.js';
+import tagRoutes from './routes/tags.js';
+import kanbanRoutes from './routes/kanban.js';
+
+// Registruj event listenere (core.* app-ovi) - mora se učitati prije nego eventi krenu da se emituju
+import './handlers/notifications.js';
 
 app.use('/auth', authRoutes);
 app.use('/households', householdRoutes);
+app.use('/households/:householdId/tasks', taskRoutes);
+app.use('/households/:householdId/tags', tagRoutes);
+app.use('/households/:householdId/boards', kanbanRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ error: 'Not found' });

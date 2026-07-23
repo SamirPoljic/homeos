@@ -7,6 +7,8 @@ import { AppShell } from './core/layout/AppShell';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import SettingsPage from './apps/households/pages/SettingsPage';
+import TasksListPage from './apps/tasks/pages/TasksListPage';
+import KanbanBoardPage from './apps/kanban/pages/KanbanBoardPage';
 
 const queryClient = new QueryClient();
 
@@ -28,6 +30,8 @@ export default function App() {
               }
             >
               <Route index element={<DashboardPage />} />
+              <Route path="tasks" element={<TasksListPage />} />
+              <Route path="kanban" element={<KanbanBoardPage />} />
               <Route path="settings" element={<SettingsPage />} />
             </Route>
           </Routes>
