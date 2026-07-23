@@ -1,6 +1,7 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { useHousehold } from '../household/HouseholdContext';
+import { NotificationBell } from '../../apps/notifications/components/NotificationBell';
 
 // Faza 1: statična lista. Od Faze 6/7 ovo dolazi iz appRegistry.getNavItems()
 const NAV_ITEMS = [
@@ -37,6 +38,7 @@ export function AppShell() {
         <header className="topbar">
           <span className="household-name-display">{household?.name ?? 'Home OS'}</span>
           <div className="topbar-user">
+            <NotificationBell />
             <span className="topbar-email">{user?.email}</span>
             <button className="btn btn-ghost" onClick={signOut}>
               Odjava

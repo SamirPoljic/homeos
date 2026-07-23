@@ -33,9 +33,12 @@ import tagRoutes from './routes/tags.js';
 import taskTemplateRoutes from './routes/taskTemplates.js';
 import adminSeedRoutes from './routes/adminSeed.js';
 import reminderRoutes from './routes/reminders.js';
+import notificationRoutes from './routes/notifications.js';
+import emailPreferenceRoutes from './routes/emailPreferences.js';
 
-// Registruj event listenere (core.* app-ovi) - mora se učitati prije nego eventi krenu da se emituju
+// Registruj event listenere (core.* app-ovi)
 import './handlers/notifications.js';
+import './handlers/email.js';
 
 app.use('/auth', authRoutes);
 app.use('/households', householdRoutes);
@@ -43,6 +46,8 @@ app.use('/households/:householdId/tasks', taskRoutes);
 app.use('/households/:householdId/tags', tagRoutes);
 app.use('/households/:householdId/task-templates', taskTemplateRoutes);
 app.use('/households/:householdId/reminders', reminderRoutes);
+app.use('/notifications', notificationRoutes);
+app.use('/profiles/me/email-preferences', emailPreferenceRoutes);
 app.use('/admin', adminSeedRoutes);
 
 app.use((req, res) => {

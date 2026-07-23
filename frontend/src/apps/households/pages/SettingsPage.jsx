@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { householdsApi } from '../api';
 import { tasksApi } from '../../tasks/api';
 import { TaskRegistryPanel } from '../../tasks/components/TaskRegistryPanel';
+import { profileApi } from '../../profile/api';
 import { useHousehold } from '../../../core/household/HouseholdContext';
 import { useAuth } from '../../../core/auth/AuthContext';
 
@@ -20,6 +21,7 @@ const TABS = [
   { id: 'members', label: 'Članovi' },
   { id: 'permissions', label: 'Pristup modulima' },
   { id: 'registry', label: 'Registar taskova' },
+  { id: 'notifications', label: 'Notifikacije' },
 ];
 
 export default function SettingsPage() {
@@ -59,6 +61,7 @@ export default function SettingsPage() {
       {activeTab === 'members' && <MembersTab />}
       {activeTab === 'permissions' && <PermissionsTab />}
       {activeTab === 'registry' && <RegistryTab />}
+      {activeTab === 'notifications' && <NotificationsTab />}
     </div>
   );
 }
@@ -377,4 +380,74 @@ function RegistryTab() {
   if (!household || loading) return <p style={{ color: 'var(--text-secondary)' }}>Učitavanje...</p>;
 
   return <TaskRegistryPanel householdId={household.id} templates={templates} onChange={load} />;
+}
+
+const CATEGORY_LABELS = {
+  task_assigned: 'Kad mi se dodijeli task',
+  reminder: 'Kad mi neko pošalje poruku',
+};
+
+function NotificationsTab() {
+  const [preferences, setPreferences] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  async function load() {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await profileApi.getEmailPreferences();
+      setPreferences(res.data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  async function toggle(category, current) {
+    try {
+      await profileApi.updateEmailPreference(category, !current);
+      await load();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  if (loading) return <p style={{ color: 'var(--text-secondary)' }}>Učitavanje...</p>;
+
+  return (
+    <div className="card" style={{ maxWidth: 480 }}>
+      <h3 style={{ marginBottom: 4 }}>Email notifikacije</h3>
+      <p style={{ color: 'var(--text-secondary)', fontSize: 13, marginBottom: 16 }}>
+        Odaberi za šta želiš da dobiješ email, pored in-app notifikacije (zvono gore desno).
+      </p>
+
+      {error && <p className="text-error" style={{ marginBottom: 12 }}>{error}</p>}
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {preferences.map((p) => (
+          <label
+            key={p.category}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '10px 12px',
+              background: 'var(--bg-surface-raised)',
+              borderRadius: 'var(--radius-sm)',
+              cursor: 'pointer',
+            }}
+          >
+            <span style={{ fontSize: 14 }}>{CATEGORY_LABELS[p.category] ?? p.category}</span>
+            <input type="checkbox" checked={p.enabled} onChange={() => toggle(p.category, p.enabled)} />
+          </label>
+        ))}
+      </div>
+    </div>
+  );
 }
