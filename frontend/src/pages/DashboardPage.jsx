@@ -17,7 +17,7 @@ export default function DashboardPage() {
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [selectedDate, setSelectedDate] = useState(() => toDateKey(new Date()));
+  const [popupDate, setPopupDate] = useState(null); // dan otvoren u popupu, null = zatvoreno
 
   async function load() {
     if (!household) return;
@@ -45,7 +45,7 @@ export default function DashboardPage() {
   if (householdLoading) return <p style={{ color: 'var(--text-secondary)' }}>Učitavanje...</p>;
   if (!household) return <CreateHouseholdForm />;
 
-  // grupiši taskove po datumu (samo todo/doing su ovdje jer se već filtrira completed=false)
+  // grupiši SVE (svi korisnici) taskove po datumu - koristi se za tačke na kalendaru i popup
   const tasksByDate = {};
   for (const t of tasks) {
     if (!t.due_date) continue;
@@ -53,9 +53,11 @@ export default function DashboardPage() {
     (tasksByDate[key] ??= []).push(t);
   }
 
-  const tasksForSelectedDay = tasksByDate[selectedDate] ?? [];
   const todayKey = toDateKey(new Date());
-  const tasksDueToday = (tasksByDate[todayKey] ?? []).filter((t) => t.assigned_to === user?.id);
+  const myTasks = tasks
+    .filter((t) => t.assigned_to === user?.id)
+    .sort((a, b) => (a.due_date ?? '9999').localeCompare(b.due_date ?? '9999'));
+  const myTasksDueToday = (tasksByDate[todayKey] ?? []).filter((t) => t.assigned_to === user?.id);
 
   function memberName(profileId) {
     const m = members.find((mm) => mm.profiles?.id === profileId);
@@ -72,34 +74,28 @@ export default function DashboardPage() {
         <p style={{ color: 'var(--text-secondary)' }}>Učitavanje...</p>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: '340px 1fr 300px', gap: 20, alignItems: 'start' }}>
-          <MonthCalendar tasksByDate={tasksByDate} selectedDate={selectedDate} onSelectDate={setSelectedDate} />
+          <MonthCalendar tasksByDate={tasksByDate} selectedDate={popupDate} onSelectDate={setPopupDate} />
 
           <div className="card">
-            <h3 style={{ marginBottom: 12 }}>
-              Taskovi za {selectedDate === todayKey ? 'danas' : selectedDate}
-            </h3>
-            {tasksForSelectedDay.length === 0 ? (
-              <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>Nema taskova za ovaj dan.</p>
+            <h3 style={{ marginBottom: 12 }}>Moji taskovi</h3>
+            {myTasks.length === 0 ? (
+              <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>Nemaš dodijeljenih taskova.</p>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {tasksForSelectedDay.map((task) => (
+                {myTasks.map((task) => (
                   <div
                     key={task.id}
-                    style={{
-                      padding: '10px 12px',
-                      background: 'var(--bg-surface-raised)',
-                      borderRadius: 'var(--radius-sm)',
-                    }}
+                    style={{ padding: '10px 12px', background: 'var(--bg-surface-raised)', borderRadius: 'var(--radius-sm)' }}
                   >
                     <div style={{ fontWeight: 600, fontSize: 14 }}>{task.title}</div>
                     <div style={{ display: 'flex', gap: 10, marginTop: 4, fontSize: 12, color: 'var(--text-muted)' }}>
+                      {task.due_date && <span>📅 {task.due_date.slice(0, 10)}</span>}
                       <span className={`badge badge-${(task.status || 'todo') === 'doing' ? 'admin' : 'member'}`}>
                         {task.status === 'doing' ? 'Doing' : 'To do'}
                       </span>
                       <span className={`badge badge-${task.priority === 'high' ? 'owner' : task.priority === 'low' ? 'member' : 'admin'}`}>
                         {PRIORITY_LABELS[task.priority]}
                       </span>
-                      <span>👤 {task.assigned_to ? memberName(task.assigned_to) : 'Nedodijeljeno'}</span>
                     </div>
                   </div>
                 ))}
@@ -111,8 +107,55 @@ export default function DashboardPage() {
             householdId={household.id}
             members={members}
             currentUserId={user?.id}
-            tasksDueToday={tasksDueToday}
+            tasksDueToday={myTasksDueToday}
           />
+        </div>
+      )}
+
+      {popupDate && (
+        <div
+          onClick={() => setPopupDate(null)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 50,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="card"
+            style={{ width: 420, maxHeight: '70vh', overflowY: 'auto', boxShadow: 'var(--shadow-lg)' }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <h3>Taskovi — {popupDate}</h3>
+              <button className="btn btn-ghost" onClick={() => setPopupDate(null)}>✕</button>
+            </div>
+
+            {(tasksByDate[popupDate] ?? []).length === 0 ? (
+              <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>Nema taskova za ovaj dan.</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {tasksByDate[popupDate].map((task) => (
+                  <div
+                    key={task.id}
+                    style={{ padding: '10px 12px', background: 'var(--bg-surface-raised)', borderRadius: 'var(--radius-sm)' }}
+                  >
+                    <div style={{ fontWeight: 600, fontSize: 14 }}>{task.title}</div>
+                    <div style={{ display: 'flex', gap: 10, marginTop: 4, fontSize: 12, color: 'var(--text-muted)' }}>
+                      <span className={`badge badge-${(task.status || 'todo') === 'doing' ? 'admin' : 'member'}`}>
+                        {task.status === 'doing' ? 'Doing' : 'To do'}
+                      </span>
+                      <span>👤 {task.assigned_to ? memberName(task.assigned_to) : 'Nedodijeljeno'}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
