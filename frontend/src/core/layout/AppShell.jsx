@@ -1,15 +1,16 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
-import { HouseholdSwitcher } from '../household/HouseholdSwitcher';
+import { useHousehold } from '../household/HouseholdContext';
 
 // Faza 1: statična lista. Od Faze 6/7 ovo dolazi iz appRegistry.getNavItems()
 const NAV_ITEMS = [
   { path: '/', label: 'Danas', icon: '☰' },
-  { path: '/households', label: 'Domaćinstvo', icon: '⌂' },
+  { path: '/settings', label: 'Postavke', icon: '⚙' },
 ];
 
 export function AppShell() {
   const { user, signOut } = useAuth();
+  const { household } = useHousehold();
 
   return (
     <div className="shell">
@@ -32,7 +33,7 @@ export function AppShell() {
 
       <div className="shell-main">
         <header className="topbar">
-          <HouseholdSwitcher />
+          <span className="household-name-display">{household?.name ?? 'Home OS'}</span>
           <div className="topbar-user">
             <span className="topbar-email">{user?.email}</span>
             <button className="btn btn-ghost" onClick={signOut}>

@@ -6,8 +6,7 @@ import { HouseholdProvider } from './core/household/HouseholdContext';
 import { AppShell } from './core/layout/AppShell';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
-import HouseholdsPage from './apps/households/pages/HouseholdsPage';
-import HouseholdMembersPage from './apps/households/pages/HouseholdMembersPage';
+import SettingsPage from './apps/households/pages/SettingsPage';
 
 const queryClient = new QueryClient();
 
@@ -29,8 +28,7 @@ export default function App() {
               }
             >
               <Route index element={<DashboardPage />} />
-              <Route path="households" element={<HouseholdsPage />} />
-              <Route path="households/:householdId/members" element={<HouseholdMembersPage />} />
+              <Route path="settings" element={<SettingsPage />} />
             </Route>
           </Routes>
         </AuthProvider>

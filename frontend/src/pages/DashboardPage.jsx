@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { useHousehold } from '../core/household/HouseholdContext';
+import { CreateHouseholdForm } from '../apps/households/components/CreateHouseholdForm';
 import { api } from '../core/api/apiClient';
 
 export default function DashboardPage() {
-  const { currentHousehold, loading } = useHousehold();
+  const { household, loading } = useHousehold();
   const [backendStatus, setBackendStatus] = useState('provjera...');
   const [dbStatus, setDbStatus] = useState('provjera...');
 
@@ -24,23 +24,13 @@ export default function DashboardPage() {
     return <p style={{ color: 'var(--text-secondary)' }}>Učitavanje...</p>;
   }
 
-  if (!currentHousehold) {
-    return (
-      <div className="card" style={{ maxWidth: 480 }}>
-        <h3 style={{ marginBottom: 8 }}>Nemaš još domaćinstvo</h3>
-        <p style={{ color: 'var(--text-secondary)', marginBottom: 16 }}>
-          Napravi svoje prvo domaćinstvo da počneš koristiti Home OS.
-        </p>
-        <Link to="/households" className="btn btn-primary">
-          Napravi domaćinstvo
-        </Link>
-      </div>
-    );
+  if (!household) {
+    return <CreateHouseholdForm />;
   }
 
   return (
     <div>
-      <h1 style={{ marginBottom: 20 }}>Danas — {currentHousehold.name}</h1>
+      <h1 style={{ marginBottom: 20 }}>Danas — {household.name}</h1>
 
       <div className="card" style={{ maxWidth: 480 }}>
         <h3 style={{ marginBottom: 12 }}>Faza 0/1 — status provjere</h3>
@@ -48,7 +38,7 @@ export default function DashboardPage() {
         <p>Backend (Render): {backendStatus}</p>
         <p>Baza (Supabase): {dbStatus}</p>
         <p style={{ marginTop: 8 }}>
-          Tvoja rola: <span className={`badge badge-${currentHousehold.role}`}>{currentHousehold.role}</span>
+          Tvoja rola: <span className={`badge badge-${household.role}`}>{household.role}</span>
         </p>
       </div>
     </div>

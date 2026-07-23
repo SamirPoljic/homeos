@@ -17,9 +17,20 @@ router.get('/', requireAuth, async (req, res) => {
 });
 
 // POST /households -> kreira household, kreator postaje 'owner'
+// (jedan korisnik smije biti član samo jednog domaćinstva - vidi household_members_one_per_profile constraint)
 router.post('/', requireAuth, async (req, res) => {
   const { name } = req.body;
   if (!name) return res.status(400).json({ error: 'name je obavezan' });
+
+  const { data: existingMembership } = await supabase
+    .from('household_members')
+    .select('id')
+    .eq('profile_id', req.user.id)
+    .maybeSingle();
+
+  if (existingMembership) {
+    return res.status(409).json({ error: 'Već si član jednog domaćinstva. Jedan korisnik može pripadati samo jednom domaćinstvu.' });
+  }
 
   const { data: household, error } = await supabase
     .from('households')
@@ -38,12 +49,37 @@ router.post('/', requireAuth, async (req, res) => {
   res.status(201).json({ data: household });
 });
 
+// Moduli na koje se odnose permisije - Faza 2+ će koristiti ovu listu za stvarno gating-ovanje
+export const MODULE_SCOPES = [
+  'tasks', 'kanban', 'calendar', 'reminders', 'notes', 'finance', 'life_admin',
+];
+
 // GET /households/:householdId -> detalji (primjer korištenja requireMembership)
 router.get('/:householdId', requireAuth, requireMembership, async (req, res) => {
   const { data, error } = await supabase
     .from('households')
     .select('*')
     .eq('id', req.params.householdId)
+    .single();
+
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ data });
+});
+
+// PATCH /households/:householdId -> promjena imena domaćinstva
+router.patch('/:householdId', requireAuth, requireMembership, async (req, res) => {
+  const { name } = req.body;
+  if (!name?.trim()) return res.status(400).json({ error: 'name je obavezan' });
+
+  if (!['owner', 'admin'].includes(req.membership.role)) {
+    return res.status(403).json({ error: 'Samo owner ili admin mogu mijenjati naziv domaćinstva' });
+  }
+
+  const { data, error } = await supabase
+    .from('households')
+    .update({ name: name.trim() })
+    .eq('id', req.params.householdId)
+    .select()
     .single();
 
   if (error) return res.status(500).json({ error: error.message });
@@ -163,6 +199,57 @@ router.delete('/:householdId/members/:memberId', requireAuth, requireMembership,
 
   if (error) return res.status(500).json({ error: error.message });
   res.status(204).send();
+});
+
+// GET /households/:householdId/permissions -> matrica član x modul (default granted=true ako reda nema)
+router.get('/:householdId/permissions', requireAuth, requireMembership, async (req, res) => {
+  const { data: overrides, error } = await supabase
+    .from('member_permissions')
+    .select('profile_id, scope, granted')
+    .eq('household_id', req.params.householdId);
+
+  if (error) return res.status(500).json({ error: error.message });
+
+  res.json({ data: { scopes: MODULE_SCOPES, overrides } });
+});
+
+// PATCH /households/:householdId/permissions -> upsert jednog (profile_id, scope) para
+router.patch('/:householdId/permissions', requireAuth, requireMembership, async (req, res) => {
+  const { profile_id, scope, granted } = req.body;
+
+  if (!profile_id || !scope || typeof granted !== 'boolean') {
+    return res.status(400).json({ error: 'profile_id, scope i granted (bool) su obavezni' });
+  }
+  if (!MODULE_SCOPES.includes(scope)) {
+    return res.status(400).json({ error: 'Nepoznat scope' });
+  }
+  if (!['owner', 'admin'].includes(req.membership.role)) {
+    return res.status(403).json({ error: 'Samo owner ili admin mogu mijenjati permisije' });
+  }
+
+  // owner uvijek ima pun pristup - ne dozvoli ograničavanje ownera
+  const { data: targetMember } = await supabase
+    .from('household_members')
+    .select('role')
+    .eq('household_id', req.params.householdId)
+    .eq('profile_id', profile_id)
+    .maybeSingle();
+
+  if (targetMember?.role === 'owner') {
+    return res.status(400).json({ error: 'Owner uvijek ima pristup svim modulima' });
+  }
+
+  const { data, error } = await supabase
+    .from('member_permissions')
+    .upsert(
+      { household_id: req.params.householdId, profile_id, scope, granted, updated_at: new Date().toISOString() },
+      { onConflict: 'household_id,profile_id,scope' }
+    )
+    .select()
+    .single();
+
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ data });
 });
 
 export default router;
