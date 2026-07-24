@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from './core/auth/AuthContext';
 import { ProtectedRoute } from './core/auth/ProtectedRoute';
 import { HouseholdProvider } from './core/household/HouseholdContext';
+import { AppsProvider } from './core/apps/AppsContext';
 import { AppShell } from './core/layout/AppShell';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
@@ -27,7 +28,9 @@ export default function App() {
               element={
                 <ProtectedRoute>
                   <HouseholdProvider>
-                    <AppShell />
+                    <AppsProvider>
+                      <AppShell />
+                    </AppsProvider>
                   </HouseholdProvider>
                 </ProtectedRoute>
               }

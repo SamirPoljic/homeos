@@ -6,6 +6,7 @@ import { profileApi } from '../../profile/api';
 import { financeApi } from '../../finance/api';
 import { lifeAdminApi } from '../../life-admin/api';
 import { appsManagerApi } from '../../apps-manager/api';
+import { useApps } from '../../../core/apps/AppsContext';
 import { useHousehold } from '../../../core/household/HouseholdContext';
 import { useAuth } from '../../../core/auth/AuthContext';
 
@@ -657,34 +658,15 @@ function DocumentCategoriesTab() {
 
 function AppsTab() {
   const { household } = useHousehold();
-  const [apps, setApps] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { apps, loading, refresh } = useApps();
   const [error, setError] = useState(null);
   const canManage = ['owner', 'admin'].includes(household?.role);
 
-  async function load() {
-    if (!household) return;
-    setLoading(true);
+  async function handleToggle(appKey, current) {
     setError(null);
     try {
-      const res = await appsManagerApi.list(household.id);
-      setApps(res.data);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    if (household) load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [household?.id]);
-
-  async function handleToggle(appKey, current) {
-    try {
       await appsManagerApi.toggle(household.id, appKey, !current);
-      await load();
+      await refresh(); // osvježava i ovaj tab i sidebar odjednom (dijele isti context)
     } catch (err) {
       setError(err.message);
     }

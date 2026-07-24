@@ -1,12 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { useHousehold } from '../household/HouseholdContext';
+import { useApps } from '../apps/AppsContext';
 import { NotificationBell } from '../../apps/notifications/components/NotificationBell';
 import { GlobalSearch } from '../../apps/search/components/GlobalSearch';
 import { QuickCaptureModal } from '../../apps/quickcapture/QuickCaptureModal';
 import { Logo } from '../components/Logo';
-import { appsManagerApi } from '../../apps/apps-manager/api';
 
 // Core stavke koje se uvijek prikazuju (ne prolaze kroz apps_registry uključi/isključi)
 const CORE_NAV_ITEMS = [
@@ -28,21 +28,11 @@ const TAIL_NAV_ITEMS = [{ path: '/settings', label: 'Postavke', icon: '⚙' }];
 export function AppShell() {
   const { user, signOut } = useAuth();
   const { household, error } = useHousehold();
+  const { enabledKeys, loading: appsLoading } = useApps();
   const [quickCaptureOpen, setQuickCaptureOpen] = useState(false);
-  const [enabledAppKeys, setEnabledAppKeys] = useState(null); // null = još učitano, tretiraj sve kao uključeno
-
-  useEffect(() => {
-    if (!household) return;
-    appsManagerApi
-      .list(household.id)
-      .then((res) => {
-        setEnabledAppKeys(new Set(res.data.filter((a) => a.enabled).map((a) => a.key)));
-      })
-      .catch(() => setEnabledAppKeys(null));
-  }, [household?.id]);
 
   const visiblePluggableItems = PLUGGABLE_NAV_ITEMS.filter(
-    (item) => !enabledAppKeys || enabledAppKeys.has(item.appKey)
+    (item) => appsLoading || enabledKeys.has(item.appKey)
   );
   const navItems = [...CORE_NAV_ITEMS, ...visiblePluggableItems, ...TAIL_NAV_ITEMS];
 
