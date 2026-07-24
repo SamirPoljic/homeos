@@ -115,21 +115,7 @@ export default function FinancePage() {
         </div>
       )}
 
-      <div className="card" style={{ marginBottom: 20 }}>
-        <h3 style={{ marginBottom: 12 }}>Kategorije</h3>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-          {categories.map((c) => (
-            <span key={c.id} className="badge badge-member">
-              {c.name}
-            </span>
-          ))}
-          {categories.length === 0 && (
-            <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>
-              Nema kategorija još — dodaj ih u Postavke → Kategorije.
-            </p>
-          )}
-        </div>
-      </div>
+
 
       <div className="card" style={{ marginBottom: 20 }}>
         <h3 style={{ marginBottom: 12 }}>Nova transakcija</h3>
