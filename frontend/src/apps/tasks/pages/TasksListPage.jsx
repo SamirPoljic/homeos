@@ -15,11 +15,13 @@ export default function TasksListPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showCompleted, setShowCompleted] = useState(false);
+  const [filterText, setFilterText] = useState('');
 
   const [templateId, setTemplateId] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [priority, setPriority] = useState('medium');
   const [assignedTo, setAssignedTo] = useState('');
+  const [recurrence, setRecurrence] = useState('');
   const [creating, setCreating] = useState(false);
 
   const [expandedId, setExpandedId] = useState(null);
@@ -88,11 +90,13 @@ export default function TasksListPage() {
         due_date: dueDate || null,
         priority,
         assigned_to: assignedTo || null,
+        recurrence_rule: recurrence || null,
       });
       setTemplateId('');
       setDueDate('');
       setPriority('medium');
       setAssignedTo('');
+      setRecurrence('');
       await loadTasks();
     } catch (err) {
       setError(err.message);
@@ -250,6 +254,12 @@ export default function TasksListPage() {
               </option>
             ))}
           </select>
+          <select className="input" style={{ width: 130 }} value={recurrence} onChange={(e) => setRecurrence(e.target.value)}>
+            <option value="">Ne ponavlja se</option>
+            <option value="daily">Dnevno</option>
+            <option value="weekly">Sedmično</option>
+            <option value="monthly">Mjesečno</option>
+          </select>
           <button className="btn btn-primary" disabled={creating || templates.length === 0} type="submit">
             {creating ? 'Dodavanje...' : 'Dodaj'}
           </button>
@@ -258,11 +268,21 @@ export default function TasksListPage() {
 
       {error && <p className="text-error" style={{ marginBottom: 12 }}>{error}</p>}
 
+      <input
+        className="input"
+        placeholder="🔍 Pretraži taskove..."
+        value={filterText}
+        onChange={(e) => setFilterText(e.target.value)}
+        style={{ marginBottom: 14 }}
+      />
+
       {loading ? (
         <p style={{ color: 'var(--text-secondary)' }}>Učitavanje...</p>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {tasks.map((task) => (
+          {tasks
+            .filter((t) => t.title.toLowerCase().includes(filterText.toLowerCase()))
+            .map((task) => (
             <div key={task.id} className="card" style={{ opacity: task.completed ? 0.55 : 1 }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
                 <input
@@ -280,6 +300,7 @@ export default function TasksListPage() {
                   </div>
                   <div style={{ display: 'flex', gap: 10, marginTop: 4, fontSize: 12, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
                     {task.due_date && <span>📅 {task.due_date.slice(0, 10)}</span>}
+                    {task.recurrence_rule && <span title="Ponavlja se">🔁</span>}
                     <span className={`badge badge-${task.priority === 'high' ? 'owner' : task.priority === 'low' ? 'member' : 'admin'}`}>
                       {PRIORITY_LABELS[task.priority]}
                     </span>

@@ -62,6 +62,7 @@ function DocumentsTab() {
   const [form, setForm] = useState({ name: '', category: '', expiry_date: '' });
   const [file, setFile] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [filterText, setFilterText] = useState('');
 
   async function load() {
     if (!household) return;
@@ -175,8 +176,18 @@ function DocumentsTab() {
 
       {error && <p className="text-error">{error}</p>}
 
+      <input
+        className="input"
+        placeholder="🔍 Pretraži dokumente..."
+        value={filterText}
+        onChange={(e) => setFilterText(e.target.value)}
+        style={{ marginBottom: 12 }}
+      />
+
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {documents.map((d) => (
+        {documents
+          .filter((d) => d.name.toLowerCase().includes(filterText.toLowerCase()))
+          .map((d) => (
           <div key={d.id} className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <div style={{ fontWeight: 600 }}>{d.name}</div>
@@ -213,6 +224,7 @@ function ContactsTab() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [form, setForm] = useState({ name: '', phone: '', email: '', notes: '' });
+  const [filterText, setFilterText] = useState('');
 
   async function load() {
     if (!household) return;
@@ -291,8 +303,18 @@ function ContactsTab() {
 
       {error && <p className="text-error">{error}</p>}
 
+      <input
+        className="input"
+        placeholder="🔍 Pretraži kontakte..."
+        value={filterText}
+        onChange={(e) => setFilterText(e.target.value)}
+        style={{ marginBottom: 12 }}
+      />
+
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {contacts.map((c) => (
+        {contacts
+          .filter((c) => c.name.toLowerCase().includes(filterText.toLowerCase()))
+          .map((c) => (
           <div key={c.id} className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <div style={{ fontWeight: 600 }}>{c.name}</div>

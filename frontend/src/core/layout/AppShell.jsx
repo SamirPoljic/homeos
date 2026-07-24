@@ -1,7 +1,10 @@
+import { useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { useHousehold } from '../household/HouseholdContext';
 import { NotificationBell } from '../../apps/notifications/components/NotificationBell';
+import { GlobalSearch } from '../../apps/search/components/GlobalSearch';
+import { QuickCaptureModal } from '../../apps/quickcapture/QuickCaptureModal';
 
 // Faza 1: statična lista. Od Faze 6/7 ovo dolazi iz appRegistry.getNavItems()
 const NAV_ITEMS = [
@@ -16,6 +19,7 @@ const NAV_ITEMS = [
 export function AppShell() {
   const { user, signOut } = useAuth();
   const { household, error } = useHousehold();
+  const [quickCaptureOpen, setQuickCaptureOpen] = useState(false);
 
   return (
     <div className="shell">
@@ -38,8 +42,13 @@ export function AppShell() {
 
       <div className="shell-main">
         <header className="topbar">
-          <span className="household-name-display">{household?.name ?? 'Home OS'}</span>
+          {household && <GlobalSearch householdId={household.id} />}
           <div className="topbar-user">
+            {household && (
+              <button className="btn btn-primary" onClick={() => setQuickCaptureOpen(true)}>
+                + Brzo dodaj
+              </button>
+            )}
             <NotificationBell />
             <span className="topbar-email">{user?.email}</span>
             <button className="btn btn-ghost" onClick={signOut}>
@@ -58,6 +67,10 @@ export function AppShell() {
           <Outlet />
         </main>
       </div>
+
+      {quickCaptureOpen && household && (
+        <QuickCaptureModal householdId={household.id} onClose={() => setQuickCaptureOpen(false)} />
+      )}
     </div>
   );
 }

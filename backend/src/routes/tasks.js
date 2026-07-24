@@ -9,9 +9,53 @@ const router = Router({ mergeParams: true });
 
 const scoped = [requireAuth, requireMembership, requireScope('tasks')];
 
+// Jednostavan model ponavljanja: 'daily' | 'weekly' | 'monthly' (bez pune RRULE komplikacije)
+function nextDueDate(currentDueDate, rule) {
+  const d = new Date(currentDueDate);
+  if (rule === 'daily') d.setDate(d.getDate() + 1);
+  else if (rule === 'weekly') d.setDate(d.getDate() + 7);
+  else if (rule === 'monthly') d.setMonth(d.getMonth() + 1);
+  else return null;
+  return d.toISOString().slice(0, 10);
+}
+
+// Kad se recurring task završi, kreiraj sljedeći "instancu" istog taska
+async function spawnNextOccurrence(task, userId) {
+  if (!task.recurrence_rule || !task.due_date) return;
+
+  const newDueDate = nextDueDate(task.due_date, task.recurrence_rule);
+  if (!newDueDate) return;
+
+  const { data: newTask, error } = await supabase
+    .from('tasks')
+    .insert({
+      household_id: task.household_id,
+      title: task.title,
+      description: task.description,
+      due_date: newDueDate,
+      priority: task.priority,
+      assigned_to: task.assigned_to,
+      visibility: task.visibility,
+      recurrence_rule: task.recurrence_rule,
+      created_by: userId,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Greška pri kreiranju sljedeće instance recurring taska:', error.message);
+    return;
+  }
+
+  await emit(task.household_id, 'task.created', newTask, { entityType: 'task', entityId: newTask.id });
+  if (newTask.assigned_to) {
+    await emit(task.household_id, 'task.assigned', newTask, { entityType: 'task', entityId: newTask.id });
+  }
+}
+
 // Helper reusable iz svih ruta koje kreiraju task
 export async function createTaskRow(householdId, userId, fields) {
-  const { title, description, due_date, priority, assigned_to, visibility } = fields;
+  const { title, description, due_date, priority, assigned_to, visibility, recurrence_rule } = fields;
   if (!title) throw Object.assign(new Error('title je obavezan'), { status: 400 });
 
   const { data, error } = await supabase
@@ -24,6 +68,7 @@ export async function createTaskRow(householdId, userId, fields) {
       priority,
       assigned_to,
       visibility,
+      recurrence_rule: recurrence_rule || null,
       created_by: userId,
     })
     .select()
@@ -135,6 +180,7 @@ router.patch('/:taskId/complete', ...scoped, async (req, res) => {
 
   if (completed) {
     await emit(req.params.householdId, 'task.completed', data, { entityType: 'task', entityId: data.id });
+    await spawnNextOccurrence(data, req.user.id);
   }
 
   res.json({ data });
@@ -166,6 +212,7 @@ router.patch('/:taskId/status', ...scoped, async (req, res) => {
 
   if (isDone) {
     await emit(req.params.householdId, 'task.completed', data, { entityType: 'task', entityId: data.id });
+    await spawnNextOccurrence(data, req.user.id);
   }
 
   res.json({ data });

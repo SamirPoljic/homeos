@@ -38,6 +38,7 @@ import emailPreferenceRoutes from './routes/emailPreferences.js';
 import noteRoutes from './routes/notes.js';
 import financeRoutes from './routes/finance.js';
 import lifeAdminRoutes from './routes/lifeAdmin.js';
+import searchRoutes from './routes/search.js';
 
 // Registruj event listenere (core.* app-ovi)
 import './handlers/notifications.js';
@@ -52,6 +53,7 @@ app.use('/households/:householdId/reminders', reminderRoutes);
 app.use('/households/:householdId/notes', noteRoutes);
 app.use('/households/:householdId/finance', financeRoutes);
 app.use('/households/:householdId/life-admin', lifeAdminRoutes);
+app.use('/households/:householdId/search', searchRoutes);
 app.use('/notifications', notificationRoutes);
 app.use('/profiles/me/email-preferences', emailPreferenceRoutes);
 app.use('/admin', adminSeedRoutes);

@@ -190,40 +190,52 @@ export default function FinancePage() {
 }
 
 function TransactionList({ items, onDelete }) {
-  if (items.length === 0) {
-    return <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>Nema transakcija.</p>;
-  }
+  const [filterText, setFilterText] = useState('');
+  const filtered = items.filter((t) => (t.description || '').toLowerCase().includes(filterText.toLowerCase()));
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      {items.map((t) => (
-        <div
-          key={t.id}
-          className="card"
-          style={{ padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-        >
-          <div>
-            <div style={{ fontSize: 14, fontWeight: 600 }}>{t.description || '(bez opisa)'}</div>
-            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-              {t.occurred_at} {t.finance_categories && `· ${t.finance_categories.name}`}
-            </div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span
-              style={{
-                fontFamily: 'var(--font-mono)',
-                color: t.type === 'income' ? 'var(--success)' : 'var(--danger)',
-              }}
+    <div>
+      <input
+        className="input"
+        placeholder="🔍 Pretraži..."
+        value={filterText}
+        onChange={(e) => setFilterText(e.target.value)}
+        style={{ marginBottom: 10, fontSize: 13 }}
+      />
+      {filtered.length === 0 ? (
+        <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>Nema transakcija.</p>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {filtered.map((t) => (
+            <div
+              key={t.id}
+              className="card"
+              style={{ padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
             >
-              {t.type === 'income' ? '+' : '-'}
-              {formatMoney(t.amount)}
-            </span>
-            <button className="btn btn-ghost" style={{ padding: '2px 6px' }} onClick={() => onDelete(t.id)}>
-              ✕
-            </button>
-          </div>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 600 }}>{t.description || '(bez opisa)'}</div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                  {t.occurred_at} {t.finance_categories && `· ${t.finance_categories.name}`}
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span
+                  style={{
+                    fontFamily: 'var(--font-mono)',
+                    color: t.type === 'income' ? 'var(--success)' : 'var(--danger)',
+                  }}
+                >
+                  {t.type === 'income' ? '+' : '-'}
+                  {formatMoney(t.amount)}
+                </span>
+                <button className="btn btn-ghost" style={{ padding: '2px 6px' }} onClick={() => onDelete(t.id)}>
+                  ✕
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
-      ))}
+      )}
     </div>
   );
 }
