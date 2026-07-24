@@ -43,6 +43,7 @@ import searchRoutes from './routes/search.js';
 // Registruj event listenere (core.* app-ovi)
 import './handlers/notifications.js';
 import './handlers/email.js';
+import './handlers/finance.js';
 
 app.use('/auth', authRoutes);
 app.use('/households', householdRoutes);

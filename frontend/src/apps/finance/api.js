@@ -16,4 +16,18 @@ export const financeApi = {
 
   getSummary: (householdId, month) =>
     api.get(`/households/${householdId}/finance/summary${month ? `?month=${month}` : ''}`),
+
+  listBudgets: (householdId) => api.get(`/households/${householdId}/finance/budgets`),
+  createBudget: (householdId, categoryId, monthlyLimit) =>
+    api.post(`/households/${householdId}/finance/budgets`, { category_id: categoryId, monthly_limit: monthlyLimit }),
+  removeBudget: (householdId, budgetId) => api.delete(`/households/${householdId}/finance/budgets/${budgetId}`),
+
+  listSubscriptions: (householdId) => api.get(`/households/${householdId}/finance/subscriptions`),
+  createSubscription: (householdId, fields) => api.post(`/households/${householdId}/finance/subscriptions`, fields),
+  updateSubscription: (householdId, id, fields) =>
+    api.patch(`/households/${householdId}/finance/subscriptions/${id}`, fields),
+  removeSubscription: (householdId, id) => api.delete(`/households/${householdId}/finance/subscriptions/${id}`),
+
+  getWhoOwes: (householdId, month) =>
+    api.get(`/households/${householdId}/finance/who-owes${month ? `?month=${month}` : ''}`),
 };
