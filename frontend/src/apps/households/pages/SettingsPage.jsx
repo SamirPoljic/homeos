@@ -32,7 +32,7 @@ export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState('household');
 
   return (
-    <div style={{ maxWidth: 780 }}>
+    <div style={{ maxWidth: 880, margin: '0 auto' }}>
       <div style={{ marginBottom: 20 }}>
         <h1 style={{ marginBottom: 4 }}>Postavke domaćinstva</h1>
         <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>

@@ -13,7 +13,7 @@ export default function LifeAdminPage() {
   const [activeTab, setActiveTab] = useState('documents');
 
   return (
-    <div style={{ maxWidth: 780 }}>
+    <div style={{ maxWidth: 880, margin: '0 auto' }}>
       <h1 style={{ marginBottom: 4 }}>Life Admin</h1>
       <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 20 }}>
         Dokumenti, važni kontakti, i zajedničke liste za kupovinu.

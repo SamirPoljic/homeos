@@ -18,7 +18,7 @@ export default function FinancePage() {
   const [activeTab, setActiveTab] = useState('transactions');
 
   return (
-    <div style={{ maxWidth: 900 }}>
+    <div style={{ maxWidth: 1000, margin: '0 auto' }}>
       <h1 style={{ marginBottom: 20 }}>Finansije</h1>
 
       <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '1px solid var(--border)' }}>
