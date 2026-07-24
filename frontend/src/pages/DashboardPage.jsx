@@ -82,7 +82,7 @@ export default function DashboardPage() {
             {myTasks.length === 0 ? (
               <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>Nemaš dodijeljenih taskova.</p>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 420, overflowY: 'auto' }}>
                 {myTasks.map((task) => (
                   <div
                     key={task.id}

@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../core/auth/AuthContext';
 import { Logo } from '../core/components/Logo';
-import { HouseIllustration } from './HouseIllustration';
 
 export default function LoginPage() {
   const { signInWithPassword, signUp } = useAuth();
@@ -42,9 +41,16 @@ export default function LoginPage() {
         overflow: 'hidden',
       }}
     >
-      <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
-        <HouseIllustration />
-      </div>
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          zIndex: 0,
+          backgroundImage: 'url(/house-bg.jpg)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }}
+      />
       <div
         style={{
           position: 'absolute',

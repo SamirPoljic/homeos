@@ -213,7 +213,12 @@ input:focus-visible {
 .shell {
   display: flex;
   min-height: 100vh;
-  background: var(--bg-void);
+  background:
+    linear-gradient(rgba(20, 18, 15, 0.94), rgba(20, 18, 15, 0.94)),
+    url('/house-bg.jpg');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
 }
 
 .sidebar {
@@ -280,9 +285,10 @@ input:focus-visible {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 20px;
   padding: 14px 28px;
   border-bottom: 1px solid var(--border);
-  background: var(--bg-void);
+  background: transparent;
 }
 
 .topbar-user {

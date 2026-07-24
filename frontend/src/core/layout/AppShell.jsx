@@ -25,9 +25,9 @@ export function AppShell() {
   return (
     <div className="shell">
       <aside className="sidebar">
-        <div className="sidebar-brand">
+        <NavLink to="/" className="sidebar-brand" style={{ textDecoration: 'none' }}>
           <Logo size="sm" />
-        </div>
+        </NavLink>
         <nav className="sidebar-nav">
           {NAV_ITEMS.map((item) => (
             <NavLink

@@ -67,7 +67,7 @@ export function ReminderPanel({ householdId, members, currentUserId, tasksDueTod
       {error && <p className="text-error" style={{ marginBottom: 10 }}>{error}</p>}
 
       {tasksDueToday.length > 0 && (
-        <div style={{ marginBottom: 14 }}>
+        <div style={{ marginBottom: 14, maxHeight: 180, overflowY: 'auto' }}>
           {tasksDueToday.map((task) => (
             <div
               key={task.id}
@@ -93,7 +93,7 @@ export function ReminderPanel({ householdId, members, currentUserId, tasksDueTod
       ) : reminders.length === 0 && tasksDueToday.length === 0 ? (
         <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 14 }}>Nema novih poruka ni podsjetnika.</p>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14, maxHeight: 180, overflowY: 'auto' }}>
           {reminders.map((r) => (
             <div
               key={r.id}
