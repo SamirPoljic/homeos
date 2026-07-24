@@ -43,7 +43,8 @@ export function NotesPanel({ householdId, scope = 'household', title: panelTitle
 
   async function handleAddTab() {
     try {
-      const res = await notesApi.create(householdId, 'Nova stranica', scope);
+      const visibility = scope === 'personal' ? 'private' : 'household';
+      const res = await notesApi.create(householdId, 'Nova stranica', visibility);
       await load();
       setActiveId(res.data.id);
       setContent('');
