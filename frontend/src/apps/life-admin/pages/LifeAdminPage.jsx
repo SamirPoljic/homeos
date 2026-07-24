@@ -169,11 +169,26 @@ function DocumentsTab() {
             value={form.expiry_date}
             onChange={(e) => setForm((f) => ({ ...f, expiry_date: e.target.value }))}
           />
-          <input
-            type="file"
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-            style={{ fontSize: 12, color: 'var(--text-secondary)' }}
-          />
+          <label
+            className="btn btn-secondary"
+            style={{
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              maxWidth: 180,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+            }}
+          >
+            📎 {file ? file.name : 'Izaberi fajl'}
+            <input
+              type="file"
+              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              style={{ display: 'none' }}
+            />
+          </label>
           <button className="btn btn-primary" disabled={uploading} type="submit">
             {uploading ? 'Dodavanje...' : 'Dodaj'}
           </button>
