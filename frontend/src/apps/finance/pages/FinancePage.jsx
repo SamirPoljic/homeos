@@ -15,8 +15,6 @@ export default function FinancePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const [newCategory, setNewCategory] = useState('');
-
   const [form, setForm] = useState({
     type: 'expense',
     amount: '',
@@ -53,18 +51,6 @@ export default function FinancePage() {
     if (household) load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [household?.id]);
-
-  async function handleAddCategory(e) {
-    e.preventDefault();
-    if (!newCategory.trim()) return;
-    try {
-      await financeApi.createCategory(household.id, newCategory.trim());
-      setNewCategory('');
-      await load();
-    } catch (err) {
-      setError(err.message);
-    }
-  }
 
   async function handleAddTransaction(e) {
     e.preventDefault();
@@ -131,23 +117,17 @@ export default function FinancePage() {
 
       <div className="card" style={{ marginBottom: 20 }}>
         <h3 style={{ marginBottom: 12 }}>Kategorije</h3>
-        <form onSubmit={handleAddCategory} style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
-          <input
-            className="input"
-            placeholder="npr. Namirnice"
-            value={newCategory}
-            onChange={(e) => setNewCategory(e.target.value)}
-          />
-          <button className="btn btn-secondary" type="submit">
-            Dodaj
-          </button>
-        </form>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
           {categories.map((c) => (
             <span key={c.id} className="badge badge-member">
               {c.name}
             </span>
           ))}
+          {categories.length === 0 && (
+            <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>
+              Nema kategorija još — dodaj ih u Postavke → Kategorije.
+            </p>
+          )}
         </div>
       </div>
 

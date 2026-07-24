@@ -40,13 +40,14 @@ export function NotesPanel({ householdId }) {
   }
 
   async function handleAddTab() {
-    const title = prompt('Naziv nove liste/stranice:');
-    if (!title?.trim()) return;
     try {
-      const res = await notesApi.create(householdId, title.trim());
+      const res = await notesApi.create(householdId, 'Nova stranica');
       await load();
       setActiveId(res.data.id);
       setContent('');
+      // odmah uđi u "uredi naziv" mod da korisnik upiše ime bez dijaloga
+      setRenamingId(res.data.id);
+      setRenameValue('Nova stranica');
     } catch (err) {
       setError(err.message);
     }
@@ -130,6 +131,7 @@ export function NotesPanel({ householdId }) {
                 style={{ width: 100, padding: '2px 6px', fontSize: 12 }}
                 value={renameValue}
                 onClick={(e) => e.stopPropagation()}
+                onFocus={(e) => e.target.select()}
                 onChange={(e) => setRenameValue(e.target.value)}
                 onBlur={() => handleRename(note.id)}
                 onKeyDown={(e) => e.key === 'Enter' && handleRename(note.id)}

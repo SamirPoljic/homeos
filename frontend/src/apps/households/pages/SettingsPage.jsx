@@ -3,6 +3,7 @@ import { householdsApi } from '../api';
 import { tasksApi } from '../../tasks/api';
 import { TaskRegistryPanel } from '../../tasks/components/TaskRegistryPanel';
 import { profileApi } from '../../profile/api';
+import { financeApi } from '../../finance/api';
 import { useHousehold } from '../../../core/household/HouseholdContext';
 import { useAuth } from '../../../core/auth/AuthContext';
 
@@ -21,6 +22,7 @@ const TABS = [
   { id: 'members', label: 'Članovi' },
   { id: 'permissions', label: 'Pristup modulima' },
   { id: 'registry', label: 'Registar taskova' },
+  { id: 'finance-categories', label: 'Kategorije (Finansije)' },
   { id: 'notifications', label: 'Notifikacije' },
 ];
 
@@ -61,6 +63,7 @@ export default function SettingsPage() {
       {activeTab === 'members' && <MembersTab />}
       {activeTab === 'permissions' && <PermissionsTab />}
       {activeTab === 'registry' && <RegistryTab />}
+      {activeTab === 'finance-categories' && <FinanceCategoriesTab />}
       {activeTab === 'notifications' && <NotificationsTab />}
     </div>
   );
@@ -447,6 +450,103 @@ function NotificationsTab() {
             <input type="checkbox" checked={p.enabled} onChange={() => toggle(p.category, p.enabled)} />
           </label>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function FinanceCategoriesTab() {
+  const { household } = useHousehold();
+  const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [name, setName] = useState('');
+  const [adding, setAdding] = useState(false);
+
+  async function load() {
+    if (!household) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await financeApi.listCategories(household.id);
+      setCategories(res.data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (household) load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [household?.id]);
+
+  async function handleAdd(e) {
+    e.preventDefault();
+    if (!name.trim()) return;
+    setAdding(true);
+    setError(null);
+    try {
+      await financeApi.createCategory(household.id, name.trim());
+      setName('');
+      await load();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setAdding(false);
+    }
+  }
+
+  async function handleDelete(id) {
+    if (!confirm('Ukloniti ovu kategoriju?')) return;
+    try {
+      await financeApi.removeCategory(household.id, id);
+      await load();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  if (!household || loading) return <p style={{ color: 'var(--text-secondary)' }}>Učitavanje...</p>;
+
+  return (
+    <div className="card" style={{ maxWidth: 480 }}>
+      <h3 style={{ marginBottom: 4 }}>Kategorije finansija</h3>
+      <p style={{ color: 'var(--text-secondary)', fontSize: 13, marginBottom: 14 }}>
+        Definiši kategorije ovdje — na Finansije stranici se samo biraju iz dropdown-a.
+      </p>
+
+      <form onSubmit={handleAdd} style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
+        <input className="input" placeholder="npr. Namirnice" value={name} onChange={(e) => setName(e.target.value)} required />
+        <button className="btn btn-primary" disabled={adding} type="submit">
+          {adding ? 'Dodavanje...' : 'Dodaj'}
+        </button>
+      </form>
+
+      {error && <p className="text-error" style={{ marginBottom: 10 }}>{error}</p>}
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        {categories.map((c) => (
+          <span
+            key={c.id}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              background: 'var(--bg-surface-raised)',
+              borderRadius: 'var(--radius-sm)',
+              padding: '6px 10px',
+              fontSize: 13,
+            }}
+          >
+            {c.name}
+            <button className="btn btn-ghost" style={{ padding: '2px 6px' }} onClick={() => handleDelete(c.id)}>
+              ✕
+            </button>
+          </span>
+        ))}
+        {categories.length === 0 && <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>Nema kategorija još.</p>}
       </div>
     </div>
   );
