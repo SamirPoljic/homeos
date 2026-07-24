@@ -35,6 +35,9 @@ import adminSeedRoutes from './routes/adminSeed.js';
 import reminderRoutes from './routes/reminders.js';
 import notificationRoutes from './routes/notifications.js';
 import emailPreferenceRoutes from './routes/emailPreferences.js';
+import noteRoutes from './routes/notes.js';
+import financeRoutes from './routes/finance.js';
+import lifeAdminRoutes from './routes/lifeAdmin.js';
 
 // Registruj event listenere (core.* app-ovi)
 import './handlers/notifications.js';
@@ -46,6 +49,9 @@ app.use('/households/:householdId/tasks', taskRoutes);
 app.use('/households/:householdId/tags', tagRoutes);
 app.use('/households/:householdId/task-templates', taskTemplateRoutes);
 app.use('/households/:householdId/reminders', reminderRoutes);
+app.use('/households/:householdId/notes', noteRoutes);
+app.use('/households/:householdId/finance', financeRoutes);
+app.use('/households/:householdId/life-admin', lifeAdminRoutes);
 app.use('/notifications', notificationRoutes);
 app.use('/profiles/me/email-preferences', emailPreferenceRoutes);
 app.use('/admin', adminSeedRoutes);

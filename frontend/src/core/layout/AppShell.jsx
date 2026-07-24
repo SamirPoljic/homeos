@@ -8,6 +8,8 @@ const NAV_ITEMS = [
   { path: '/', label: 'Početna tabla', icon: '☰' },
   { path: '/tasks', label: 'Taskovi', icon: '✓' },
   { path: '/kanban', label: 'Kanban', icon: '▤' },
+  { path: '/finance', label: 'Finansije', icon: '$' },
+  { path: '/life-admin', label: 'Life Admin', icon: '⌘' },
   { path: '/settings', label: 'Postavke', icon: '⚙' },
 ];
 

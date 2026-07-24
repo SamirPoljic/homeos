@@ -6,6 +6,7 @@ import { householdsApi } from '../apps/households/api';
 import { tasksApi } from '../apps/tasks/api';
 import { MonthCalendar, toDateKey } from '../apps/dashboard/components/MonthCalendar';
 import { ReminderPanel } from '../apps/reminders/components/ReminderPanel';
+import { NotesPanel } from '../apps/notes/components/NotesPanel';
 
 const PRIORITY_LABELS = { low: 'Nizak', medium: 'Srednji', high: 'Visok' };
 
@@ -109,6 +110,12 @@ export default function DashboardPage() {
             currentUserId={user?.id}
             tasksDueToday={myTasksDueToday}
           />
+        </div>
+      )}
+
+      {!loading && (
+        <div style={{ marginTop: 20 }}>
+          <NotesPanel householdId={household.id} />
         </div>
       )}
 
