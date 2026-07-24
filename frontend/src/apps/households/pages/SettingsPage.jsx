@@ -5,6 +5,7 @@ import { TaskRegistryPanel } from '../../tasks/components/TaskRegistryPanel';
 import { profileApi } from '../../profile/api';
 import { financeApi } from '../../finance/api';
 import { lifeAdminApi } from '../../life-admin/api';
+import { appsManagerApi } from '../../apps-manager/api';
 import { useHousehold } from '../../../core/household/HouseholdContext';
 import { useAuth } from '../../../core/auth/AuthContext';
 
@@ -26,6 +27,7 @@ const TABS = [
   { id: 'finance-categories', label: 'Kategorije (Finansije)' },
   { id: 'document-categories', label: 'Kategorije (Dokumenti)' },
   { id: 'notifications', label: 'Notifikacije' },
+  { id: 'apps', label: 'Apps' },
 ];
 
 export default function SettingsPage() {
@@ -68,6 +70,7 @@ export default function SettingsPage() {
       {activeTab === 'finance-categories' && <FinanceCategoriesTab />}
       {activeTab === 'document-categories' && <DocumentCategoriesTab />}
       {activeTab === 'notifications' && <NotificationsTab />}
+      {activeTab === 'apps' && <AppsTab />}
     </div>
   );
 }
@@ -647,6 +650,89 @@ function DocumentCategoriesTab() {
           </span>
         ))}
         {categories.length === 0 && <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>Nema kategorija još.</p>}
+      </div>
+    </div>
+  );
+}
+
+function AppsTab() {
+  const { household } = useHousehold();
+  const [apps, setApps] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const canManage = ['owner', 'admin'].includes(household?.role);
+
+  async function load() {
+    if (!household) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await appsManagerApi.list(household.id);
+      setApps(res.data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (household) load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [household?.id]);
+
+  async function handleToggle(appKey, current) {
+    try {
+      await appsManagerApi.toggle(household.id, appKey, !current);
+      await load();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  if (!household || loading) return <p style={{ color: 'var(--text-secondary)' }}>Učitavanje...</p>;
+
+  return (
+    <div className="card" style={{ maxWidth: 560 }}>
+      <h3 style={{ marginBottom: 4 }}>Apps</h3>
+      <p style={{ color: 'var(--text-secondary)', fontSize: 13, marginBottom: 16 }}>
+        Uključi ili isključi module za ovo domaćinstvo. Osnovni sistem (taskovi, notifikacije) se ne može isključiti.
+      </p>
+
+      {error && <p className="text-error" style={{ marginBottom: 12 }}>{error}</p>}
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {apps.map((app) => (
+          <div
+            key={app.key}
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '10px 12px',
+              background: 'var(--bg-surface-raised)',
+              borderRadius: 'var(--radius-sm)',
+            }}
+          >
+            <div>
+              <div style={{ fontWeight: 600, fontSize: 14 }}>
+                {app.name}
+                {app.is_core && <span className="badge badge-owner" style={{ marginLeft: 8 }}>core</span>}
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                {app.key} · v{app.version}
+              </div>
+            </div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: app.is_core ? 'default' : 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={app.enabled}
+                disabled={app.is_core || !canManage}
+                onChange={() => handleToggle(app.key, app.enabled)}
+              />
+            </label>
+          </div>
+        ))}
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { useHousehold } from '../household/HouseholdContext';
@@ -6,21 +6,45 @@ import { NotificationBell } from '../../apps/notifications/components/Notificati
 import { GlobalSearch } from '../../apps/search/components/GlobalSearch';
 import { QuickCaptureModal } from '../../apps/quickcapture/QuickCaptureModal';
 import { Logo } from '../components/Logo';
+import { appsManagerApi } from '../../apps/apps-manager/api';
 
-// Faza 1: statična lista. Od Faze 6/7 ovo dolazi iz appRegistry.getNavItems()
-const NAV_ITEMS = [
+// Core stavke koje se uvijek prikazuju (ne prolaze kroz apps_registry uključi/isključi)
+const CORE_NAV_ITEMS = [
   { path: '/', label: 'Početna tabla', icon: '☰' },
   { path: '/tasks', label: 'Taskovi', icon: '✓' },
-  { path: '/kanban', label: 'Kanban', icon: '▤' },
-  { path: '/finance', label: 'Finansije', icon: '$' },
-  { path: '/life-admin', label: 'Life Admin', icon: '⌘' },
-  { path: '/settings', label: 'Postavke', icon: '⚙' },
 ];
+
+// Ove stavke su vezane za app_key iz apps_registry - pojavljuju se/nestaju kad se app uključi/isključi
+// u Postavke → Apps. Ovo je "registry-driven" mehanizam iz extensibility zahtjeva.
+const PLUGGABLE_NAV_ITEMS = [
+  { path: '/kanban', label: 'Kanban', icon: '▤', appKey: 'core.kanban' },
+  { path: '/finance', label: 'Finansije', icon: '$', appKey: 'core.finance' },
+  { path: '/life-admin', label: 'Life Admin', icon: '⌘', appKey: 'core.life_admin' },
+  { path: '/meal-planner', label: 'Meal Planner', icon: '🍽', appKey: 'meal-planner' },
+];
+
+const TAIL_NAV_ITEMS = [{ path: '/settings', label: 'Postavke', icon: '⚙' }];
 
 export function AppShell() {
   const { user, signOut } = useAuth();
   const { household, error } = useHousehold();
   const [quickCaptureOpen, setQuickCaptureOpen] = useState(false);
+  const [enabledAppKeys, setEnabledAppKeys] = useState(null); // null = još učitano, tretiraj sve kao uključeno
+
+  useEffect(() => {
+    if (!household) return;
+    appsManagerApi
+      .list(household.id)
+      .then((res) => {
+        setEnabledAppKeys(new Set(res.data.filter((a) => a.enabled).map((a) => a.key)));
+      })
+      .catch(() => setEnabledAppKeys(null));
+  }, [household?.id]);
+
+  const visiblePluggableItems = PLUGGABLE_NAV_ITEMS.filter(
+    (item) => !enabledAppKeys || enabledAppKeys.has(item.appKey)
+  );
+  const navItems = [...CORE_NAV_ITEMS, ...visiblePluggableItems, ...TAIL_NAV_ITEMS];
 
   return (
     <div className="shell">
@@ -29,7 +53,7 @@ export function AppShell() {
           <Logo size="sm" />
         </NavLink>
         <nav className="sidebar-nav">
-          {NAV_ITEMS.map((item) => (
+          {navItems.map((item) => (
             <NavLink
               key={item.path}
               to={item.path}

@@ -51,7 +51,7 @@ router.post('/', requireAuth, async (req, res) => {
 
 // Moduli na koje se odnose permisije - Faza 2+ će koristiti ovu listu za stvarno gating-ovanje
 export const MODULE_SCOPES = [
-  'tasks', 'kanban', 'calendar', 'reminders', 'notes', 'finance', 'life_admin',
+  'tasks', 'kanban', 'calendar', 'reminders', 'notes', 'finance', 'life_admin', 'meal_planner',
 ];
 
 // GET /households/:householdId -> detalji (primjer korištenja requireMembership)

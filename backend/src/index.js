@@ -40,6 +40,8 @@ import financeRoutes from './routes/finance.js';
 import lifeAdminRoutes from './routes/lifeAdmin.js';
 import searchRoutes from './routes/search.js';
 import sharesRoutes from './routes/shares.js';
+import appsRoutes from './routes/apps.js';
+import mealPlannerRoutes from './routes/mealPlanner.js';
 
 // Registruj event listenere (core.* app-ovi)
 import './handlers/notifications.js';
@@ -57,6 +59,8 @@ app.use('/households/:householdId/finance', financeRoutes);
 app.use('/households/:householdId/life-admin', lifeAdminRoutes);
 app.use('/households/:householdId/search', searchRoutes);
 app.use('/households/:householdId/shares', sharesRoutes);
+app.use('/households/:householdId/apps', appsRoutes);
+app.use('/households/:householdId/meal-planner', mealPlannerRoutes);
 app.use('/notifications', notificationRoutes);
 app.use('/profiles/me/email-preferences', emailPreferenceRoutes);
 app.use('/admin', adminSeedRoutes);
