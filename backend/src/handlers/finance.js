@@ -11,7 +11,9 @@ function advanceDate(dateStr, frequency) {
   return d.toISOString().slice(0, 10);
 }
 
-// task.completed -> ako je ovaj task nastao iz subscription-a (računa), pomjeri datum i napravi sljedeći
+// task.completed -> ako je ovaj task nastao iz subscription-a (računa):
+// 1. Upiši STVARNU transakciju (trošak) - ovo je nedostajalo
+// 2. Pomjeri datum dospijeća i napravi task za sljedeći ciklus
 registerHandler('core.finance', 'task.completed', async ({ householdId, payload }) => {
   if (payload.source_entity_type !== 'subscription' || !payload.source_entity_id) return;
 
@@ -23,6 +25,19 @@ registerHandler('core.finance', 'task.completed', async ({ householdId, payload 
 
   if (!subscription) return;
 
+  // 1. Upiši transakciju - bez ovoga se plaćanje nikad ne vidi u Finansijama
+  await supabase.from('finance_transactions').insert({
+    household_id: householdId,
+    category_id: subscription.category_id,
+    type: 'expense',
+    amount: subscription.amount,
+    description: `Plaćanje: ${subscription.name}`,
+    paid_by: payload.assigned_to || payload.created_by,
+    occurred_at: new Date().toISOString().slice(0, 10),
+    visibility: subscription.visibility || 'household',
+  });
+
+  // 2. Sljedeći ciklus
   const nextDate = advanceDate(subscription.next_due_date, subscription.frequency);
   if (!nextDate) return; // jednokratni račun, ne ponavlja se
 
@@ -32,6 +47,7 @@ registerHandler('core.finance', 'task.completed', async ({ householdId, payload 
     title: `Plati: ${subscription.name}`,
     due_date: nextDate,
     priority: 'high',
+    assigned_to: subscription.visibility === 'private' ? payload.assigned_to || payload.created_by : null,
   });
 
   await supabase

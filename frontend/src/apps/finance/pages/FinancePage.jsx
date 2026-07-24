@@ -441,8 +441,11 @@ function BillsTab() {
     next_due_date: new Date().toISOString().slice(0, 10),
     category_id: '',
     reminder_days_before: 3,
+    personal: false,
   });
   const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [editFields, setEditFields] = useState({});
 
   async function load() {
     if (!household) return;
@@ -492,6 +495,32 @@ function BillsTab() {
     setPendingDeleteId(null);
     try {
       await financeApi.removeSubscription(household.id, id);
+      await load();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  function startEdit(s) {
+    setEditingId(s.id);
+    setEditFields({
+      name: s.name,
+      amount: s.amount,
+      frequency: s.frequency,
+      next_due_date: s.next_due_date,
+      category_id: s.category_id || '',
+      personal: s.visibility === 'private',
+    });
+  }
+
+  async function saveEdit(id) {
+    try {
+      await financeApi.updateSubscription(household.id, id, {
+        ...editFields,
+        amount: Number(editFields.amount),
+        category_id: editFields.category_id || null,
+      });
+      setEditingId(null);
       await load();
     } catch (err) {
       setError(err.message);
@@ -558,6 +587,14 @@ function BillsTab() {
               </option>
             ))}
           </select>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-secondary)' }}>
+            <input
+              type="checkbox"
+              checked={form.personal}
+              onChange={(e) => setForm((f) => ({ ...f, personal: e.target.checked }))}
+            />
+            Lično
+          </label>
           <button className="btn btn-primary" disabled={saving} type="submit">
             {saving ? 'Dodavanje...' : 'Dodaj'}
           </button>
@@ -568,19 +605,82 @@ function BillsTab() {
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {subscriptions.map((s) => (
-          <div key={s.id} className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <div style={{ fontWeight: 600 }}>{s.name}</div>
-              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                {formatMoney(s.amount)} · {FREQUENCY_LABELS[s.frequency]} ·{' '}
-                <span style={{ color: isDueSoon(s.next_due_date, s.reminder_days_before) ? 'var(--danger)' : 'var(--text-muted)' }}>
-                  dospijeva {s.next_due_date}
-                </span>
+          <div key={s.id} className="card">
+            {editingId === s.id ? (
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                <input
+                  className="input"
+                  style={{ flex: 1, minWidth: 120 }}
+                  value={editFields.name}
+                  onChange={(e) => setEditFields((f) => ({ ...f, name: e.target.value }))}
+                />
+                <input
+                  className="input"
+                  type="number"
+                  step="0.01"
+                  style={{ width: 90 }}
+                  value={editFields.amount}
+                  onChange={(e) => setEditFields((f) => ({ ...f, amount: e.target.value }))}
+                />
+                <select
+                  className="input"
+                  style={{ width: 120 }}
+                  value={editFields.frequency}
+                  onChange={(e) => setEditFields((f) => ({ ...f, frequency: e.target.value }))}
+                >
+                  <option value="weekly">Sedmično</option>
+                  <option value="monthly">Mjesečno</option>
+                  <option value="yearly">Godišnje</option>
+                  <option value="once">Jednokratno</option>
+                </select>
+                <input
+                  className="input"
+                  type="date"
+                  style={{ width: 140 }}
+                  value={editFields.next_due_date}
+                  onChange={(e) => setEditFields((f) => ({ ...f, next_due_date: e.target.value }))}
+                />
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+                  <input
+                    type="checkbox"
+                    checked={editFields.personal}
+                    onChange={(e) => setEditFields((f) => ({ ...f, personal: e.target.checked }))}
+                  />
+                  Lično
+                </label>
+                <button className="btn btn-primary" onClick={() => saveEdit(s.id)}>
+                  Sačuvaj
+                </button>
+                <button className="btn btn-ghost" onClick={() => setEditingId(null)}>
+                  Otkaži
+                </button>
               </div>
-            </div>
-            <button className="btn btn-ghost" onClick={() => setPendingDeleteId(s.id)}>
-              Obriši
-            </button>
+            ) : (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ fontWeight: 600 }}>
+                    {s.name}{' '}
+                    <span className={`badge badge-${s.visibility === 'private' ? 'member' : 'admin'}`} style={{ marginLeft: 6 }}>
+                      {s.visibility === 'private' ? 'lično' : 'zajedničko'}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                    {formatMoney(s.amount)} · {FREQUENCY_LABELS[s.frequency]} ·{' '}
+                    <span style={{ color: isDueSoon(s.next_due_date, s.reminder_days_before) ? 'var(--danger)' : 'var(--text-muted)' }}>
+                      dospijeva {s.next_due_date}
+                    </span>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button className="btn btn-secondary" onClick={() => startEdit(s)}>
+                    Uredi
+                  </button>
+                  <button className="btn btn-ghost" onClick={() => setPendingDeleteId(s.id)}>
+                    Obriši
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         ))}
         {subscriptions.length === 0 && <p style={{ color: 'var(--text-secondary)' }}>Nema računa još.</p>}

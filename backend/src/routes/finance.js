@@ -223,10 +223,12 @@ router.get('/subscriptions', ...scoped, async (req, res) => {
 });
 
 router.post('/subscriptions', ...scoped, async (req, res) => {
-  const { name, amount, frequency, next_due_date, category_id, reminder_days_before } = req.body;
+  const { name, amount, frequency, next_due_date, category_id, reminder_days_before, personal } = req.body;
   if (!name?.trim() || !amount || !frequency || !next_due_date) {
     return res.status(400).json({ error: 'name, amount, frequency i next_due_date su obavezni' });
   }
+
+  const visibility = personal ? 'private' : 'household';
 
   const { data: subscription, error } = await supabase
     .from('subscriptions')
@@ -238,6 +240,7 @@ router.post('/subscriptions', ...scoped, async (req, res) => {
       next_due_date,
       category_id: category_id || null,
       reminder_days_before: reminder_days_before ?? 3,
+      visibility,
     })
     .select()
     .single();
@@ -249,6 +252,7 @@ router.post('/subscriptions', ...scoped, async (req, res) => {
     title: `Plati: ${subscription.name}`,
     due_date: subscription.next_due_date,
     priority: 'high',
+    assigned_to: visibility === 'private' ? req.user.id : null,
   });
 
   await supabase.from('tasks').update({ source_entity_type: 'subscription', source_entity_id: subscription.id }).eq('id', task.id);
@@ -262,9 +266,20 @@ router.post('/subscriptions', ...scoped, async (req, res) => {
 });
 
 router.patch('/subscriptions/:subscriptionId', ...scoped, async (req, res) => {
+  const { name, amount, frequency, next_due_date, category_id, reminder_days_before, personal } = req.body;
+
+  const updates = {};
+  if (name !== undefined) updates.name = name.trim();
+  if (amount !== undefined) updates.amount = amount;
+  if (frequency !== undefined) updates.frequency = frequency;
+  if (next_due_date !== undefined) updates.next_due_date = next_due_date;
+  if (category_id !== undefined) updates.category_id = category_id || null;
+  if (reminder_days_before !== undefined) updates.reminder_days_before = reminder_days_before;
+  if (personal !== undefined) updates.visibility = personal ? 'private' : 'household';
+
   const { data, error } = await supabase
     .from('subscriptions')
-    .update(req.body)
+    .update(updates)
     .eq('id', req.params.subscriptionId)
     .eq('household_id', req.params.householdId)
     .select()
