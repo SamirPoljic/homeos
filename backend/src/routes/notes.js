@@ -7,13 +7,23 @@ import { supabase } from '../lib/supabaseClient.js';
 const router = Router({ mergeParams: true });
 const scoped = [requireAuth, requireMembership, requireScope('notes')];
 
-// GET /households/:householdId/notes
+// GET /households/:householdId/notes?scope=household|personal
 router.get('/', ...scoped, async (req, res) => {
-  const { data, error } = await supabase
+  const { scope = 'household' } = req.query;
+
+  let query = supabase
     .from('notes')
     .select('*')
     .eq('household_id', req.params.householdId)
     .order('created_at', { ascending: true });
+
+  if (scope === 'personal') {
+    query = query.eq('visibility', 'private').eq('author_id', req.user.id);
+  } else {
+    query = query.eq('visibility', 'household');
+  }
+
+  const { data, error } = await query;
 
   if (error) return res.status(500).json({ error: error.message });
   res.json({ data });
@@ -21,12 +31,18 @@ router.get('/', ...scoped, async (req, res) => {
 
 // POST /households/:householdId/notes -> nova "stranica" (tab)
 router.post('/', ...scoped, async (req, res) => {
-  const { title } = req.body;
+  const { title, visibility } = req.body;
   if (!title?.trim()) return res.status(400).json({ error: 'title je obavezan' });
 
   const { data, error } = await supabase
     .from('notes')
-    .insert({ household_id: req.params.householdId, author_id: req.user.id, title: title.trim(), content: '' })
+    .insert({
+      household_id: req.params.householdId,
+      author_id: req.user.id,
+      title: title.trim(),
+      content: '',
+      visibility: visibility === 'private' ? 'private' : 'household',
+    })
     .select()
     .single();
 
@@ -36,6 +52,16 @@ router.post('/', ...scoped, async (req, res) => {
 
 // PATCH /households/:householdId/notes/:noteId -> izmjena naslova i/ili sadržaja
 router.patch('/:noteId', ...scoped, async (req, res) => {
+  const { data: existing } = await supabase
+    .from('notes')
+    .select('author_id, visibility')
+    .eq('id', req.params.noteId)
+    .single();
+
+  if (existing?.visibility === 'private' && existing.author_id !== req.user.id) {
+    return res.status(403).json({ error: 'Ne možeš mijenjati tuđu ličnu bilješku' });
+  }
+
   const { title, content } = req.body;
   const updates = { updated_at: new Date().toISOString() };
   if (title !== undefined) updates.title = title;
@@ -55,6 +81,16 @@ router.patch('/:noteId', ...scoped, async (req, res) => {
 
 // DELETE /households/:householdId/notes/:noteId
 router.delete('/:noteId', ...scoped, async (req, res) => {
+  const { data: existing } = await supabase
+    .from('notes')
+    .select('author_id, visibility')
+    .eq('id', req.params.noteId)
+    .single();
+
+  if (existing?.visibility === 'private' && existing.author_id !== req.user.id) {
+    return res.status(403).json({ error: 'Ne možeš obrisati tuđu ličnu bilješku' });
+  }
+
   const { error } = await supabase
     .from('notes')
     .delete()

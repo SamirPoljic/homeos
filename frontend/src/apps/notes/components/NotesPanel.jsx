@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { notesApi } from '../api';
+import { ConfirmDialog } from '../../../core/components/ConfirmDialog';
 
-export function NotesPanel({ householdId }) {
+export function NotesPanel({ householdId, scope = 'household', title: panelTitle = 'Bilješke' }) {
   const [notes, setNotes] = useState([]);
   const [activeId, setActiveId] = useState(null);
   const [content, setContent] = useState('');
@@ -9,13 +10,14 @@ export function NotesPanel({ householdId }) {
   const [error, setError] = useState(null);
   const [renamingId, setRenamingId] = useState(null);
   const [renameValue, setRenameValue] = useState('');
-  const [saveStatus, setSaveStatus] = useState(''); // 'Sačuvano' privremeno nakon blur
+  const [saveStatus, setSaveStatus] = useState('');
+  const [pendingDeleteId, setPendingDeleteId] = useState(null);
 
   async function load(keepActive = true) {
     setLoading(true);
     setError(null);
     try {
-      const res = await notesApi.list(householdId);
+      const res = await notesApi.list(householdId, scope);
       setNotes(res.data);
       if (!keepActive || !res.data.find((n) => n.id === activeId)) {
         const first = res.data[0];
@@ -32,7 +34,7 @@ export function NotesPanel({ householdId }) {
   useEffect(() => {
     load(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [householdId]);
+  }, [householdId, scope]);
 
   function switchTab(note) {
     setActiveId(note.id);
@@ -41,11 +43,10 @@ export function NotesPanel({ householdId }) {
 
   async function handleAddTab() {
     try {
-      const res = await notesApi.create(householdId, 'Nova stranica');
+      const res = await notesApi.create(householdId, 'Nova stranica', scope);
       await load();
       setActiveId(res.data.id);
       setContent('');
-      // odmah uđi u "uredi naziv" mod da korisnik upiše ime bez dijaloga
       setRenamingId(res.data.id);
       setRenameValue('Nova stranica');
     } catch (err) {
@@ -75,8 +76,9 @@ export function NotesPanel({ householdId }) {
     }
   }
 
-  async function handleDelete(noteId) {
-    if (!confirm('Obrisati ovu stranicu?')) return;
+  async function confirmDelete() {
+    const noteId = pendingDeleteId;
+    setPendingDeleteId(null);
     try {
       await notesApi.remove(householdId, noteId);
       if (activeId === noteId) setActiveId(null);
@@ -90,13 +92,17 @@ export function NotesPanel({ householdId }) {
 
   return (
     <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+      <div style={{ padding: '10px 14px 0', fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)' }}>
+        {panelTitle}
+      </div>
+
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
           gap: 2,
           borderBottom: '1px solid var(--border)',
-          padding: '10px 10px 0',
+          padding: '8px 10px 0',
           overflowX: 'auto',
         }}
       >
@@ -142,7 +148,7 @@ export function NotesPanel({ householdId }) {
                 <span
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleDelete(note.id);
+                    setPendingDeleteId(note.id);
                   }}
                   style={{ color: 'var(--text-muted)', fontSize: 11 }}
                 >
@@ -170,7 +176,7 @@ export function NotesPanel({ householdId }) {
           <>
             <textarea
               className="input"
-              style={{ minHeight: 180, resize: 'vertical', fontFamily: 'var(--font-body)', lineHeight: 1.6 }}
+              style={{ minHeight: 140, resize: 'vertical', fontFamily: 'var(--font-body)', lineHeight: 1.6 }}
               placeholder="Piši ovdje..."
               value={content}
               onChange={(e) => setContent(e.target.value)}
@@ -180,6 +186,14 @@ export function NotesPanel({ householdId }) {
           </>
         )}
       </div>
+
+      {pendingDeleteId && (
+        <ConfirmDialog
+          message="Obrisati ovu stranicu?"
+          onConfirm={confirmDelete}
+          onCancel={() => setPendingDeleteId(null)}
+        />
+      )}
     </div>
   );
 }

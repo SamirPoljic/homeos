@@ -114,8 +114,9 @@ export default function DashboardPage() {
       )}
 
       {!loading && (
-        <div style={{ marginTop: 20 }}>
-          <NotesPanel householdId={household.id} />
+        <div style={{ marginTop: 20, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+          <NotesPanel householdId={household.id} scope="household" title="Zajedničke bilješke" />
+          <NotesPanel householdId={household.id} scope="personal" title="Moje lične bilješke" />
         </div>
       )}
 
