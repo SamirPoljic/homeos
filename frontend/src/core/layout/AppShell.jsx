@@ -5,6 +5,7 @@ import { useHousehold } from '../household/HouseholdContext';
 import { NotificationBell } from '../../apps/notifications/components/NotificationBell';
 import { GlobalSearch } from '../../apps/search/components/GlobalSearch';
 import { QuickCaptureModal } from '../../apps/quickcapture/QuickCaptureModal';
+import { Logo } from '../components/Logo';
 
 // Faza 1: statična lista. Od Faze 6/7 ovo dolazi iz appRegistry.getNavItems()
 const NAV_ITEMS = [
@@ -24,7 +25,9 @@ export function AppShell() {
   return (
     <div className="shell">
       <aside className="sidebar">
-        <div className="sidebar-brand">Home OS</div>
+        <div className="sidebar-brand">
+          <Logo size="sm" />
+        </div>
         <nav className="sidebar-nav">
           {NAV_ITEMS.map((item) => (
             <NavLink

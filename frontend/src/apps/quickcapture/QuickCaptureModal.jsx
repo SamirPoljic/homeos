@@ -21,6 +21,10 @@ export function QuickCaptureModal({ householdId, onClose }) {
 
   const [templateId, setTemplateId] = useState('');
   const [dueDate, setDueDate] = useState('');
+  const [priority, setPriority] = useState('medium');
+  const [assignedTo, setAssignedTo] = useState('');
+  const [recurrence, setRecurrence] = useState('');
+  const [noteTitle, setNoteTitle] = useState('');
   const [noteText, setNoteText] = useState('');
   const [recipientId, setRecipientId] = useState('');
   const [reminderText, setReminderText] = useState('');
@@ -30,6 +34,12 @@ export function QuickCaptureModal({ householdId, onClose }) {
     householdsApi.listMembers(householdId).then((res) => setMembers(res.data));
   }, [householdId]);
 
+  function handleTemplateChange(id) {
+    setTemplateId(id);
+    const template = templates.find((t) => t.id === id);
+    if (template) setPriority(template.default_priority ?? 'medium');
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
     setSaving(true);
@@ -38,13 +48,18 @@ export function QuickCaptureModal({ householdId, onClose }) {
       if (type === 'task') {
         const template = templates.find((t) => t.id === templateId);
         if (!template) throw new Error('Izaberi task iz registra');
-        await tasksApi.create(householdId, { title: template.title, due_date: dueDate || null, priority: template.default_priority });
+        await tasksApi.create(householdId, {
+          title: template.title,
+          due_date: dueDate || null,
+          priority,
+          assigned_to: assignedTo || null,
+          recurrence_rule: recurrence || null,
+        });
         navigate('/tasks');
       } else if (type === 'note') {
-        if (!noteText.trim()) throw new Error('Upiši tekst note');
-        const title = noteText.trim().slice(0, 30);
-        const res = await notesApi.create(householdId, title);
-        await notesApi.update(householdId, res.data.id, { content: noteText.trim() });
+        if (!noteTitle.trim()) throw new Error('Upiši naziv note');
+        const res = await notesApi.create(householdId, noteTitle.trim());
+        if (noteText.trim()) await notesApi.update(householdId, res.data.id, { content: noteText.trim() });
         navigate('/');
       } else if (type === 'reminder') {
         if (!recipientId || !reminderText.trim()) throw new Error('Izaberi primaoca i upiši poruku');
@@ -91,7 +106,7 @@ export function QuickCaptureModal({ householdId, onClose }) {
         <form onSubmit={handleSubmit}>
           {type === 'task' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <select className="input" value={templateId} onChange={(e) => setTemplateId(e.target.value)} required>
+              <select className="input" value={templateId} onChange={(e) => handleTemplateChange(e.target.value)} required>
                 <option value="" disabled>
                   Izaberi iz registra...
                 </option>
@@ -101,20 +116,55 @@ export function QuickCaptureModal({ householdId, onClose }) {
                   </option>
                 ))}
               </select>
-              <input className="input" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input
+                  className="input"
+                  type="date"
+                  style={{ flex: 1 }}
+                  value={dueDate}
+                  onChange={(e) => setDueDate(e.target.value)}
+                />
+                <select className="input" style={{ width: 110 }} value={priority} onChange={(e) => setPriority(e.target.value)}>
+                  <option value="low">Nizak</option>
+                  <option value="medium">Srednji</option>
+                  <option value="high">Visok</option>
+                </select>
+              </div>
+              <select className="input" value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}>
+                <option value="">Nedodijeljeno</option>
+                {members.map((m) => (
+                  <option key={m.profiles.id} value={m.profiles.id}>
+                    {m.profiles.full_name || m.profiles.email}
+                  </option>
+                ))}
+              </select>
+              <select className="input" value={recurrence} onChange={(e) => setRecurrence(e.target.value)}>
+                <option value="">Ne ponavlja se</option>
+                <option value="daily">Dnevno</option>
+                <option value="weekly">Sedmično</option>
+                <option value="monthly">Mjesečno</option>
+              </select>
             </div>
           )}
 
           {type === 'note' && (
-            <textarea
-              className="input"
-              style={{ minHeight: 100 }}
-              placeholder="Upiši bilješku..."
-              value={noteText}
-              onChange={(e) => setNoteText(e.target.value)}
-              autoFocus
-              required
-            />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <input
+                className="input"
+                placeholder="Naziv stranice"
+                value={noteTitle}
+                onChange={(e) => setNoteTitle(e.target.value)}
+                autoFocus
+                required
+              />
+              <textarea
+                className="input"
+                style={{ minHeight: 100 }}
+                placeholder="Sadržaj (opciono)..."
+                value={noteText}
+                onChange={(e) => setNoteText(e.target.value)}
+              />
+            </div>
           )}
 
           {type === 'reminder' && (
