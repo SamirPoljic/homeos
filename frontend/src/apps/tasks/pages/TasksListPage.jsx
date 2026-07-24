@@ -269,63 +269,111 @@ export default function TasksListPage() {
       )}
 
       <div className="card" style={{ marginBottom: 24 }}>
-        <h3 style={{ marginBottom: 12 }}>Dodaj task na listu</h3>
-        <form onSubmit={handleCreate} style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          <select
-            className="input"
-            style={{ flex: 2, minWidth: 180 }}
-            value={templateId}
-            onChange={(e) => handleTemplateChange(e.target.value)}
-            required
+        <h3 style={{ marginBottom: 14 }}>Dodaj task na listu</h3>
+        <form onSubmit={handleCreate}>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '2fr 1fr 0.8fr 1.2fr 1fr 1.2fr auto',
+              gap: 10,
+              alignItems: 'end',
+            }}
           >
-            <option value="" disabled>
-              Izaberi iz registra...
-            </option>
-            {templates.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.title}
-              </option>
-            ))}
-          </select>
-          <input
-            className="input"
-            type="date"
-            style={{ flex: 1, minWidth: 140 }}
-            value={dueDate}
-            onChange={(e) => setDueDate(e.target.value)}
-          />
-          <select className="input" style={{ width: 120 }} value={priority} onChange={(e) => setPriority(e.target.value)}>
-            <option value="low">Nizak</option>
-            <option value="medium">Srednji</option>
-            <option value="high">Visok</option>
-          </select>
-          <select className="input" style={{ width: 160 }} value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}>
-            <option value="">Nedodijeljeno</option>
-            {members.map((m) => (
-              <option key={m.profiles.id} value={m.profiles.id}>
-                {m.profiles.full_name || m.profiles.email}
-              </option>
-            ))}
-          </select>
-          <select className="input" style={{ width: 130 }} value={recurrence} onChange={(e) => setRecurrence(e.target.value)}>
-            <option value="">Ne ponavlja se</option>
-            <option value="daily">Dnevno</option>
-            <option value="weekly">Sedmično</option>
-            <option value="monthly">Mjesečno</option>
-          </select>
-          <button className="btn btn-primary" disabled={creating || templates.length === 0} type="submit">
-            {creating ? 'Dodavanje...' : 'Dodaj'}
-          </button>
+            <div>
+              <label className="label">Task</label>
+              <select className="input" value={templateId} onChange={(e) => handleTemplateChange(e.target.value)} required>
+                <option value="" disabled>
+                  Izaberi iz registra...
+                </option>
+                {templates.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.title}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="label">Datum</label>
+              <input className="input" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+            </div>
+
+            <div>
+              <label className="label">Prioritet</label>
+              <select className="input" value={priority} onChange={(e) => setPriority(e.target.value)}>
+                <option value="low">Nizak</option>
+                <option value="medium">Srednji</option>
+                <option value="high">Visok</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="label">Zadužen</label>
+              <select className="input" value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}>
+                <option value="">Nedodijeljeno</option>
+                {members.map((m) => (
+                  <option key={m.profiles.id} value={m.profiles.id}>
+                    {m.profiles.full_name || m.profiles.email}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="label">Ponavljanje</label>
+              <select className="input" value={recurrence} onChange={(e) => setRecurrence(e.target.value)}>
+                <option value="">Nikad</option>
+                <option value="daily">Dnevno</option>
+                <option value="weekly">Sedmično</option>
+                <option value="monthly">Mjesečno</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="label">Vidljivost</label>
+              <select
+                className="input"
+                value={visibility}
+                onChange={(e) => setVisibility(e.target.value)}
+              >
+                <option value="household">Zajedničko</option>
+                <option value="private">Privatno</option>
+                <option value="specific">Određene osobe</option>
+              </select>
+            </div>
+
+            <button className="btn btn-primary" disabled={creating || templates.length === 0} type="submit">
+              {creating ? 'Dodavanje...' : 'Dodaj'}
+            </button>
+          </div>
+
+          {visibility === 'specific' && (
+            <div
+              style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: 10,
+                marginTop: 12,
+                padding: '10px 12px',
+                background: 'var(--bg-surface-raised)',
+                borderRadius: 'var(--radius-sm)',
+              }}
+            >
+              {members
+                .filter((m) => m.profiles?.id !== user?.id)
+                .map((m) => (
+                  <label key={m.profiles.id} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+                    <input
+                      type="checkbox"
+                      checked={sharedWith.includes(m.profiles.id)}
+                      onChange={() => toggleSharedWith(m.profiles.id)}
+                    />
+                    {m.profiles.full_name || m.profiles.email}
+                  </label>
+                ))}
+            </div>
+          )}
         </form>
-        <div style={{ marginTop: 10, maxWidth: 320 }}>
-          <VisibilitySelector
-            visibility={visibility}
-            onVisibilityChange={setVisibility}
-            members={members.filter((m) => m.profiles?.id !== user?.id)}
-            selectedProfileIds={sharedWith}
-            onToggleProfile={toggleSharedWith}
-          />
-        </div>
       </div>
 
       {error && <p className="text-error" style={{ marginBottom: 12 }}>{error}</p>}
