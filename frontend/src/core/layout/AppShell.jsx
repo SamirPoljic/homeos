@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { useHousehold } from '../household/HouseholdContext';
 import { useApps } from '../apps/AppsContext';
+import { householdsApi } from '../../apps/households/api';
 import { NotificationBell } from '../../apps/notifications/components/NotificationBell';
 import { GlobalSearch } from '../../apps/search/components/GlobalSearch';
 import { QuickCaptureModal } from '../../apps/quickcapture/QuickCaptureModal';
@@ -17,10 +18,10 @@ const CORE_NAV_ITEMS = [
 // Ove stavke su vezane za app_key iz apps_registry - pojavljuju se/nestaju kad se app uključi/isključi
 // u Postavke → Apps. Ovo je "registry-driven" mehanizam iz extensibility zahtjeva.
 const PLUGGABLE_NAV_ITEMS = [
-  { path: '/kanban', label: 'Kanban', icon: '▤', appKey: 'core.kanban' },
-  { path: '/finance', label: 'Finansije', icon: '$', appKey: 'core.finance' },
-  { path: '/life-admin', label: 'Life Admin', icon: '⌘', appKey: 'core.life_admin' },
-  { path: '/meal-planner', label: 'Meal Planner', icon: '🍽', appKey: 'meal-planner' },
+  { path: '/kanban', label: 'Kanban', icon: '▤', appKey: 'core.kanban', scope: 'kanban' },
+  { path: '/finance', label: 'Finansije', icon: '$', appKey: 'core.finance', scope: 'finance' },
+  { path: '/life-admin', label: 'Life Admin', icon: '⌘', appKey: 'core.life_admin', scope: 'life_admin' },
+  { path: '/meal-planner', label: 'Meal Planner', icon: '🍽', appKey: 'meal-planner', scope: 'meal_planner' },
 ];
 
 const TAIL_NAV_ITEMS = [{ path: '/settings', label: 'Postavke', icon: '⚙' }];
@@ -30,9 +31,24 @@ export function AppShell() {
   const { household, error } = useHousehold();
   const { enabledKeys, loading: appsLoading } = useApps();
   const [quickCaptureOpen, setQuickCaptureOpen] = useState(false);
+  const [deniedScopes, setDeniedScopes] = useState(new Set());
+
+  useEffect(() => {
+    if (!household || household.role === 'owner') {
+      setDeniedScopes(new Set());
+      return;
+    }
+    householdsApi
+      .getPermissions(household.id)
+      .then((res) => {
+        const mine = res.data.overrides.filter((o) => o.profile_id === user?.id && o.granted === false);
+        setDeniedScopes(new Set(mine.map((o) => o.scope)));
+      })
+      .catch(() => setDeniedScopes(new Set()));
+  }, [household?.id, household?.role, user?.id]);
 
   const visiblePluggableItems = PLUGGABLE_NAV_ITEMS.filter(
-    (item) => appsLoading || enabledKeys.has(item.appKey)
+    (item) => (appsLoading || enabledKeys.has(item.appKey)) && !deniedScopes.has(item.scope)
   );
   const navItems = [...CORE_NAV_ITEMS, ...visiblePluggableItems, ...TAIL_NAV_ITEMS];
 

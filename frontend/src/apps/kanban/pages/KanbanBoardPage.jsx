@@ -68,6 +68,17 @@ export default function KanbanBoardPage() {
 
   if (loading) return <p style={{ color: 'var(--text-secondary)' }}>Učitavanje...</p>;
 
+  if (error && error.toLowerCase().includes('nemaš pristup')) {
+    return (
+      <div className="card" style={{ maxWidth: 420 }}>
+        <h3 style={{ marginBottom: 8 }}>Nemaš pristup ovom modulu</h3>
+        <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>
+          Owner ili admin domaćinstva ti mogu dodijeliti pristup u Postavke → Pristup modulima.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div>
       <h1 style={{ marginBottom: 8 }}>Kanban</h1>

@@ -125,6 +125,17 @@ function DocumentsTab() {
 
   if (!household || loading) return <p style={{ color: 'var(--text-secondary)' }}>Učitavanje...</p>;
 
+  if (error && error.toLowerCase().includes('nemaš pristup')) {
+    return (
+      <div className="card" style={{ maxWidth: 420 }}>
+        <h3 style={{ marginBottom: 8 }}>Nemaš pristup ovom modulu</h3>
+        <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>
+          Owner ili admin domaćinstva ti mogu dodijeliti pristup u Postavke → Pristup modulima.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div>
       <div className="card" style={{ marginBottom: 20 }}>
@@ -267,6 +278,17 @@ function ContactsTab() {
   }
 
   if (!household || loading) return <p style={{ color: 'var(--text-secondary)' }}>Učitavanje...</p>;
+
+  if (error && error.toLowerCase().includes('nemaš pristup')) {
+    return (
+      <div className="card" style={{ maxWidth: 420 }}>
+        <h3 style={{ marginBottom: 8 }}>Nemaš pristup ovom modulu</h3>
+        <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>
+          Owner ili admin domaćinstva ti mogu dodijeliti pristup u Postavke → Pristup modulima.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -412,6 +434,17 @@ function ShoppingTab() {
   }
 
   if (!household || loading) return <p style={{ color: 'var(--text-secondary)' }}>Učitavanje...</p>;
+
+  if (error && error.toLowerCase().includes('nemaš pristup')) {
+    return (
+      <div className="card" style={{ maxWidth: 420 }}>
+        <h3 style={{ marginBottom: 8 }}>Nemaš pristup ovom modulu</h3>
+        <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>
+          Owner ili admin domaćinstva ti mogu dodijeliti pristup u Postavke → Pristup modulima.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div>
