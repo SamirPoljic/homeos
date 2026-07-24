@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useHousehold } from '../../../core/household/HouseholdContext';
 import { lifeAdminApi } from '../api';
+import { supabase } from '../../../core/api/supabaseClient';
 
 const TABS = [
   { id: 'documents', label: 'Dokumenti' },
@@ -55,16 +56,23 @@ function isExpiringSoon(dateStr) {
 function DocumentsTab() {
   const { household } = useHousehold();
   const [documents, setDocuments] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [form, setForm] = useState({ name: '', category: '', expiry_date: '', file_url: '' });
+  const [form, setForm] = useState({ name: '', category: '', expiry_date: '' });
+  const [file, setFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
 
   async function load() {
     if (!household) return;
     setLoading(true);
     try {
-      const res = await lifeAdminApi.listDocuments(household.id);
-      setDocuments(res.data);
+      const [docsRes, catsRes] = await Promise.all([
+        lifeAdminApi.listDocuments(household.id),
+        lifeAdminApi.listDocumentCategories(household.id),
+      ]);
+      setDocuments(docsRes.data);
+      setCategories(catsRes.data);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -80,12 +88,27 @@ function DocumentsTab() {
   async function handleAdd(e) {
     e.preventDefault();
     if (!form.name.trim()) return;
+    setUploading(true);
+    setError(null);
     try {
-      await lifeAdminApi.createDocument(household.id, form);
-      setForm({ name: '', category: '', expiry_date: '', file_url: '' });
+      let file_url = '';
+
+      if (file) {
+        const path = `${household.id}/${Date.now()}-${file.name}`;
+        const { error: uploadError } = await supabase.storage.from('documents').upload(path, file);
+        if (uploadError) throw uploadError;
+        const { data: urlData } = supabase.storage.from('documents').getPublicUrl(path);
+        file_url = urlData.publicUrl;
+      }
+
+      await lifeAdminApi.createDocument(household.id, { ...form, file_url });
+      setForm({ name: '', category: '', expiry_date: '' });
+      setFile(null);
       await load();
     } catch (err) {
       setError(err.message);
+    } finally {
+      setUploading(false);
     }
   }
 
@@ -105,10 +128,7 @@ function DocumentsTab() {
     <div>
       <div className="card" style={{ marginBottom: 20 }}>
         <h3 style={{ marginBottom: 12 }}>Novi dokument</h3>
-        <p style={{ color: 'var(--text-muted)', fontSize: 12, marginBottom: 10 }}>
-          Za sada se čuvaju samo podaci o dokumentu (naziv, kategorija, datum isteka) — upload fajla dolazi kasnije.
-        </p>
-        <form onSubmit={handleAdd} style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+        <form onSubmit={handleAdd} style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
           <input
             className="input"
             placeholder="Naziv (npr. Garancija - frižider)"
@@ -117,13 +137,19 @@ function DocumentsTab() {
             onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
             required
           />
-          <input
+          <select
             className="input"
-            placeholder="Kategorija"
-            style={{ width: 140 }}
+            style={{ width: 160 }}
             value={form.category}
             onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
-          />
+          >
+            <option value="">Bez kategorije</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.name}>
+                {c.name}
+              </option>
+            ))}
+          </select>
           <input
             className="input"
             type="date"
@@ -131,10 +157,20 @@ function DocumentsTab() {
             value={form.expiry_date}
             onChange={(e) => setForm((f) => ({ ...f, expiry_date: e.target.value }))}
           />
-          <button className="btn btn-primary" type="submit">
-            Dodaj
+          <input
+            type="file"
+            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            style={{ fontSize: 12, color: 'var(--text-secondary)' }}
+          />
+          <button className="btn btn-primary" disabled={uploading} type="submit">
+            {uploading ? 'Dodavanje...' : 'Dodaj'}
           </button>
         </form>
+        {categories.length === 0 && (
+          <p style={{ color: 'var(--text-muted)', fontSize: 12 }}>
+            Nema kategorija još — dodaj ih u Postavke → Kategorije (Dokumenti).
+          </p>
+        )}
       </div>
 
       {error && <p className="text-error">{error}</p>}
@@ -153,9 +189,16 @@ function DocumentsTab() {
                 )}
               </div>
             </div>
-            <button className="btn btn-ghost" onClick={() => handleDelete(d.id)}>
-              Obriši
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              {d.file_url && (
+                <a href={d.file_url} target="_blank" rel="noopener noreferrer" className="btn btn-secondary" style={{ fontSize: 12 }}>
+                  Otvori fajl
+                </a>
+              )}
+              <button className="btn btn-ghost" onClick={() => handleDelete(d.id)}>
+                Obriši
+              </button>
+            </div>
           </div>
         ))}
         {documents.length === 0 && <p style={{ color: 'var(--text-secondary)' }}>Nema dokumenata još.</p>}

@@ -1,6 +1,12 @@
 import { api } from '../../core/api/apiClient';
 
 export const lifeAdminApi = {
+  listDocumentCategories: (householdId) => api.get(`/households/${householdId}/life-admin/document-categories`),
+  createDocumentCategory: (householdId, name) =>
+    api.post(`/households/${householdId}/life-admin/document-categories`, { name }),
+  removeDocumentCategory: (householdId, id) =>
+    api.delete(`/households/${householdId}/life-admin/document-categories/${id}`),
+
   listDocuments: (householdId) => api.get(`/households/${householdId}/life-admin/documents`),
   createDocument: (householdId, fields) => api.post(`/households/${householdId}/life-admin/documents`, fields),
   removeDocument: (householdId, id) => api.delete(`/households/${householdId}/life-admin/documents/${id}`),

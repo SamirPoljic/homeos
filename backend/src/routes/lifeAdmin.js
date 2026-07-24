@@ -7,6 +7,44 @@ import { supabase } from '../lib/supabaseClient.js';
 const router = Router({ mergeParams: true });
 const scoped = [requireAuth, requireMembership, requireScope('life_admin')];
 
+// ---------- Document categories (registar) ----------
+
+router.get('/document-categories', ...scoped, async (req, res) => {
+  const { data, error } = await supabase
+    .from('document_categories')
+    .select('*')
+    .eq('household_id', req.params.householdId)
+    .order('name');
+
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ data });
+});
+
+router.post('/document-categories', ...scoped, async (req, res) => {
+  const { name } = req.body;
+  if (!name?.trim()) return res.status(400).json({ error: 'name je obavezan' });
+
+  const { data, error } = await supabase
+    .from('document_categories')
+    .insert({ household_id: req.params.householdId, name: name.trim() })
+    .select()
+    .single();
+
+  if (error) return res.status(500).json({ error: error.message });
+  res.status(201).json({ data });
+});
+
+router.delete('/document-categories/:categoryId', ...scoped, async (req, res) => {
+  const { error } = await supabase
+    .from('document_categories')
+    .delete()
+    .eq('id', req.params.categoryId)
+    .eq('household_id', req.params.householdId);
+
+  if (error) return res.status(500).json({ error: error.message });
+  res.status(204).send();
+});
+
 // ---------- Documents (metapodaci - bez file uploada za sada) ----------
 
 router.get('/documents', ...scoped, async (req, res) => {
