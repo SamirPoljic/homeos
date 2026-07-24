@@ -85,6 +85,29 @@ export async function createTaskRow(householdId, userId, fields) {
   return data;
 }
 
+// Filtrira listu entiteta prema visibility pravilu: household=svi vide, private=samo autor,
+// specific=samo oni u entity_shares. Ovo je centralna provjera koja do sada nigdje nije postojala.
+async function filterByVisibility(items, userId, entityType, ownerField = 'created_by') {
+  const specificIds = items.filter((i) => i.visibility === 'specific').map((i) => i.id);
+  let sharedWithMe = new Set();
+
+  if (specificIds.length > 0) {
+    const { data: shares } = await supabase
+      .from('entity_shares')
+      .select('entity_id')
+      .eq('entity_type', entityType)
+      .eq('shared_with_profile_id', userId)
+      .in('entity_id', specificIds);
+    sharedWithMe = new Set((shares ?? []).map((s) => s.entity_id));
+  }
+
+  return items.filter((item) => {
+    if (item.visibility === 'private') return item[ownerField] === userId;
+    if (item.visibility === 'specific') return item[ownerField] === userId || sharedWithMe.has(item.id);
+    return true; // 'household'
+  });
+}
+
 // GET /households/:householdId/tasks
 router.get('/', ...scoped, async (req, res) => {
   const { assigned_to, completed, tag, priority } = req.query;
@@ -102,9 +125,11 @@ router.get('/', ...scoped, async (req, res) => {
   const { data, error } = await query;
   if (error) return res.status(500).json({ error: error.message });
 
+  const visible = await filterByVisibility(data, req.user.id, 'task');
+
   const filtered = tag
-    ? data.filter((t) => t.task_tags.some((tt) => tt.tags.id === tag))
-    : data;
+    ? visible.filter((t) => t.task_tags.some((tt) => tt.tags.id === tag))
+    : visible;
 
   res.json({ data: filtered });
 });
@@ -129,6 +154,10 @@ router.get('/:taskId', ...scoped, async (req, res) => {
     .single();
 
   if (error) return res.status(404).json({ error: 'Task nije pronađen' });
+
+  const [visible] = await filterByVisibility([data], req.user.id, 'task');
+  if (!visible) return res.status(403).json({ error: 'Nemaš pristup ovom tasku' });
+
   res.json({ data });
 });
 

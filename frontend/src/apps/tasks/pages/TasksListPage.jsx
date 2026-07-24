@@ -1,14 +1,18 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useHousehold } from '../../../core/household/HouseholdContext';
+import { useAuth } from '../../../core/auth/AuthContext';
 import { tasksApi } from '../api';
 import { householdsApi } from '../../households/api';
+import { sharesApi } from '../../shares/api';
+import { VisibilitySelector } from '../../shares/components/VisibilitySelector';
 
 
 const PRIORITY_LABELS = { low: 'Nizak', medium: 'Srednji', high: 'Visok' };
 
 export default function TasksListPage() {
   const { household } = useHousehold();
+  const { user } = useAuth();
   const [tasks, setTasks] = useState([]);
   const [templates, setTemplates] = useState([]);
   const [members, setMembers] = useState([]);
@@ -22,6 +26,8 @@ export default function TasksListPage() {
   const [priority, setPriority] = useState('medium');
   const [assignedTo, setAssignedTo] = useState('');
   const [recurrence, setRecurrence] = useState('');
+  const [visibility, setVisibility] = useState('household');
+  const [sharedWith, setSharedWith] = useState([]);
   const [creating, setCreating] = useState(false);
 
   const [expandedId, setExpandedId] = useState(null);
@@ -85,24 +91,36 @@ export default function TasksListPage() {
     setCreating(true);
     setError(null);
     try {
-      await tasksApi.create(household.id, {
+      const res = await tasksApi.create(household.id, {
         title: template.title,
         due_date: dueDate || null,
         priority,
         assigned_to: assignedTo || null,
         recurrence_rule: recurrence || null,
+        visibility,
       });
+
+      if (visibility === 'specific') {
+        await Promise.all(sharedWith.map((profileId) => sharesApi.add(household.id, 'task', res.data.id, profileId)));
+      }
+
       setTemplateId('');
       setDueDate('');
       setPriority('medium');
       setAssignedTo('');
       setRecurrence('');
+      setVisibility('household');
+      setSharedWith([]);
       await loadTasks();
     } catch (err) {
       setError(err.message);
     } finally {
       setCreating(false);
     }
+  }
+
+  function toggleSharedWith(profileId) {
+    setSharedWith((prev) => (prev.includes(profileId) ? prev.filter((id) => id !== profileId) : [...prev, profileId]));
   }
 
   function handleTemplateChange(id) {
@@ -130,13 +148,35 @@ export default function TasksListPage() {
     }
   }
 
-  function startEdit(task) {
+  const [editVisibility, setEditVisibility] = useState('household');
+  const [editSharedWith, setEditSharedWith] = useState([]);
+  const [editExistingShares, setEditExistingShares] = useState([]);
+
+  function toggleEditSharedWith(profileId) {
+    setEditSharedWith((prev) => (prev.includes(profileId) ? prev.filter((id) => id !== profileId) : [...prev, profileId]));
+  }
+
+  async function startEdit(task) {
     setEditingId(task.id);
     setEditFields({
       due_date: task.due_date ? task.due_date.slice(0, 10) : '',
       priority: task.priority,
       assigned_to: task.assigned_to ?? '',
     });
+    setEditVisibility(task.visibility || 'household');
+
+    if (task.visibility === 'specific') {
+      try {
+        const res = await sharesApi.list(household.id, 'task', task.id);
+        setEditExistingShares(res.data);
+        setEditSharedWith(res.data.map((s) => s.shared_with_profile_id));
+      } catch (err) {
+        setError(err.message);
+      }
+    } else {
+      setEditExistingShares([]);
+      setEditSharedWith([]);
+    }
   }
 
   async function saveEdit(taskId) {
@@ -145,7 +185,20 @@ export default function TasksListPage() {
         due_date: editFields.due_date || null,
         priority: editFields.priority,
         assigned_to: editFields.assigned_to || null,
+        visibility: editVisibility,
       });
+
+      if (editVisibility === 'specific') {
+        const existingIds = editExistingShares.map((s) => s.shared_with_profile_id);
+        const toAdd = editSharedWith.filter((id) => !existingIds.includes(id));
+        const toRemove = editExistingShares.filter((s) => !editSharedWith.includes(s.shared_with_profile_id));
+
+        await Promise.all([
+          ...toAdd.map((profileId) => sharesApi.add(household.id, 'task', taskId, profileId)),
+          ...toRemove.map((s) => sharesApi.remove(household.id, s.id)),
+        ]);
+      }
+
       setEditingId(null);
       await loadTasks();
     } catch (err) {
@@ -264,6 +317,15 @@ export default function TasksListPage() {
             {creating ? 'Dodavanje...' : 'Dodaj'}
           </button>
         </form>
+        <div style={{ marginTop: 10, maxWidth: 320 }}>
+          <VisibilitySelector
+            visibility={visibility}
+            onVisibilityChange={setVisibility}
+            members={members.filter((m) => m.profiles?.id !== user?.id)}
+            selectedProfileIds={sharedWith}
+            onToggleProfile={toggleSharedWith}
+          />
+        </div>
       </div>
 
       {error && <p className="text-error" style={{ marginBottom: 12 }}>{error}</p>}
@@ -301,6 +363,8 @@ export default function TasksListPage() {
                   <div style={{ display: 'flex', gap: 10, marginTop: 4, fontSize: 12, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
                     {task.due_date && <span>📅 {task.due_date.slice(0, 10)}</span>}
                     {task.recurrence_rule && <span title="Ponavlja se">🔁</span>}
+                    {task.visibility === 'private' && <span title="Privatno">🔒</span>}
+                    {task.visibility === 'specific' && <span title="Podijeljeno sa određenim osobama">👥</span>}
                     <span className={`badge badge-${task.priority === 'high' ? 'owner' : task.priority === 'low' ? 'member' : 'admin'}`}>
                       {PRIORITY_LABELS[task.priority]}
                     </span>
@@ -346,6 +410,15 @@ export default function TasksListPage() {
                               </option>
                             ))}
                           </select>
+                          <div style={{ width: '100%', maxWidth: 320 }}>
+                            <VisibilitySelector
+                              visibility={editVisibility}
+                              onVisibilityChange={setEditVisibility}
+                              members={members.filter((m) => m.profiles?.id !== user?.id)}
+                              selectedProfileIds={editSharedWith}
+                              onToggleProfile={toggleEditSharedWith}
+                            />
+                          </div>
                           <button className="btn btn-primary" onClick={() => saveEdit(task.id)}>
                             Sačuvaj
                           </button>
